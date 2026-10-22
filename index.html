@@ -72,7 +72,7 @@ canvas{width:100%;height:220px;display:block}
 </head>
 <body>
 <header>
-  <h1>Pump<span>Radar</span><small>v2.2</small></h1>
+  <h1>Pump<span>Radar</span><small>v2.3</small></h1>
   <div class="status">
     <span><i class="dot" id="wsDot"></i><span id="wsTxt">feed offline</span></span>
     <span id="solPx">SOL —</span>
@@ -179,6 +179,8 @@ canvas{width:100%;height:220px;display:block}
       <button class="btn ghost" id="botAdd">Add bot (clone selected)</button>
       <label>Copy from<select id="botLead"></select></label>
       <button class="btn ghost" id="notifBtn2">Enable desktop alerts</button>
+      <button class="btn ghost" id="soundBtn">Sound alerts: off</button>
+      <button class="btn ghost" id="wakeBtn">Keep screen awake</button>
     </div>
     <div class="tbl"><table>
       <thead><tr><th class="l">Bot</th><th class="l">State</th><th>Equity $</th><th>P&amp;L %</th><th>Closed</th><th>Win %</th><th>Avg SOL</th><th>PF</th><th>Max DD</th><th>Open</th><th class="l">Copy-ready</th><th class="l"></th></tr></thead>
@@ -1161,6 +1163,7 @@ function signal(b,kind,p,extra){
   if(leadBot()===b){
     const ready=readiness(b).ok;
     notify(`PumpRadar COPY ${kind}${ready?"":" (not copy-ready)"}`,`[${b.name}] ${text}`);
+    beep(kind);flashTitle(`⚡ ${kind} ${p.sym}`);
     log(`COPY [${b.name}] ${text}`);
   }
   dirty.bot=true;
@@ -1247,6 +1250,33 @@ $("#botCsv").onclick=()=>downloadCsv([["bot","entry","exit","symbol","mint","pnl
   .concat(B.closed.map(c=>[B.name,new Date(c.t).toISOString(),new Date(c.exit).toISOString(),c.sym,c.mint,c.pnl,c.x,c.score,c.smart??"",c.fk.join("|"),c.why])),
   `pumpradar-paper-${B.name.replace(/\W+/g,"-").toLowerCase()}.csv`);
 $("#notifBtn2").onclick=()=>$("#notifBtn").click();
+
+/* phone mode: keep the screen awake (Screen Wake Lock) and beep on COPY signals (iOS Safari has no Notification API in tabs) */
+let wakeLock=null,wantWake=false,actx=null,soundOn=false,titleTimer=null;
+function updWake(){$("#wakeBtn").textContent=!("wakeLock" in navigator)?"Screen wake not supported":wakeLock?"Screen stays awake ✓":"Keep screen awake"}
+async function getWake(){
+  try{if(!("wakeLock" in navigator))throw new Error("unsupported");
+    wakeLock=await navigator.wakeLock.request("screen");wakeLock.addEventListener("release",()=>{wakeLock=null;updWake()})}
+  catch{wakeLock=null}
+  updWake();
+}
+$("#wakeBtn").onclick=()=>{wantWake=true;getWake()};
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&wantWake&&!wakeLock)getWake()});
+function beep(kind){
+  if(!soundOn||!actx)return;
+  try{const buy=String(kind).startsWith("BUY");
+    [0,0.45].forEach(d=>{const o=actx.createOscillator(),g=actx.createGain();o.type="square";o.frequency.value=buy?880:440;
+      g.gain.setValueAtTime(0.15,actx.currentTime+d);g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+d+0.35);
+      o.connect(g);g.connect(actx.destination);o.start(actx.currentTime+d);o.stop(actx.currentTime+d+0.36)})}catch{}
+}
+function flashTitle(t){document.title=t;clearTimeout(titleTimer);titleTimer=setTimeout(()=>document.title="PumpRadar",20000)}
+$("#soundBtn").onclick=()=>{
+  soundOn=!soundOn;
+  if(soundOn&&!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)()}catch{actx=null}}
+  try{actx?.resume()}catch{}
+  $("#soundBtn").textContent="Sound alerts: "+(soundOn?"on":"off");
+  if(soundOn)beep("BUY");   // test tone (also unlocks audio on iOS)
+};
 
 function botEntries(b){
   const m={};

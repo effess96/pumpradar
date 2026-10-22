@@ -1,0 +1,9 @@
+{
+  "name": "pumpradar-server",
+  "version": "4.0.0",
+  "private": true,
+  "description": "Runs PumpRadar's paper bots 24/7 and sends Telegram alerts. Read-only: no wallet, no trading.",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "playwright": "1.48.2" }
+}

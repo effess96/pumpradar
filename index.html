@@ -72,6 +72,7 @@ canvas{width:100%;height:220px;display:block}
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
 .kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font:12.5px var(--mono)}
 .kv span:nth-child(odd){color:var(--mute)}
+.two>*,.grid>*{min-width:0}.log{overflow-wrap:anywhere}
 .wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10.5px;border:1px solid var(--line);color:var(--mute)}
 .tag.auto{color:var(--accent);border-color:var(--accent)}
@@ -100,7 +101,7 @@ a.btn{background:var(--accent);color:#1a1205}a.btn.ghost{background:var(--panel)
 </head>
 <body>
 <header>
-  <h1>Pump<span>Radar</span><small>v3</small></h1>
+  <h1>Pump<span>Radar</span><small>v4</small></h1>
   <div class="status">
     <span><i class="dot" id="wsDot"></i><span id="wsTxt">feed offline</span></span>
     <span id="solPx">SOL —</span>
@@ -129,11 +130,11 @@ a.btn{background:var(--accent);color:#1a1205}a.btn.ghost{background:var(--panel)
 <!-- FOLLOW -->
 <section id="follow">
   <div id="fStatus"></div>
-  <div class="act" style="margin:0 0 6px">
+  <div class="act" style="margin:0 0 6px" id="fPhone">
     <button class="btn ghost" id="wakeBtn">Keep screen awake</button>
     <button class="btn ghost" id="soundBtn">Sound alerts: off</button>
   </div>
-  <p class="note">Keep this screen open: iPhone pauses the bots when you lock it or switch apps. Tap both buttons above each time you open the app.</p>
+  <p class="note" id="fNote">Keep this screen open: iPhone pauses the bots when you lock it or switch apps. Tap both buttons above each time you open the app.</p>
   <h3>Do now</h3><div id="fActions"></div>
   <h3>Manage open positions</h3><div id="fPos"></div>
   <h3>Bot race (50 trades + 5 checks = copy-ready)</h3><div id="fRace"></div>
@@ -219,6 +220,7 @@ a.btn{background:var(--accent);color:#1a1205}a.btn.ghost{background:var(--panel)
     <div class="bar">
       <button class="btn" id="botAll">Start all bots</button>
       <button class="btn ghost" id="botAdd">Add bot (clone selected)</button>
+      <label>Auto-evolve<input type="checkbox" id="evoOn"></label>
       <label>Copy from<select id="botLead"></select></label>
       <button class="btn ghost" id="notifBtn2">Enable desktop alerts</button>
     </div>
@@ -226,7 +228,8 @@ a.btn{background:var(--accent);color:#1a1205}a.btn.ghost{background:var(--panel)
       <thead><tr><th class="l">Bot</th><th class="l">State</th><th>Equity $</th><th>P&amp;L %</th><th>Closed</th><th>Win %</th><th>Avg SOL</th><th>PF</th><th>Max DD</th><th>Open</th><th class="l">Copy-ready</th><th class="l"></th></tr></thead>
       <tbody id="botList"></tbody>
     </table></div>
-    <p class="note">Every bot trades fake SOL on the same live feed with its own strategy, so you can see which one actually has an edge. Fills use bonding-curve math, pump fee, copy-lag slippage and a fixed fee per trade. Sizing and lock-outs use your Risk rules. COPY alerts come only from the bot in "Copy from": in Auto, that's the best bot that has passed every readiness check, and until one has, nothing is sent. Bots run only while this tab is open; positions persist and resume on reload.</p>
+    <p class="note" id="evoLog"></p>
+    <p class="note" id="botNote">Every bot trades fake SOL on the same live feed with its own strategy, so you can see which one actually has an edge. Fills use bonding-curve math, pump fee, copy-lag slippage and a fixed fee per trade. Sizing and lock-outs use your Risk rules. COPY alerts come only from the bot in "Copy from": in Auto, that's the best bot that has passed every readiness check, and until one has, nothing is sent. Bots run only while this tab is open; positions persist and resume on reload.</p>
   </div>
 
   <h3 id="botTitle">Selected bot</h3>
@@ -321,6 +324,7 @@ a.btn{background:var(--accent);color:#1a1205}a.btn.ghost{background:var(--panel)
 <!-- SCORE HISTORY -->
 <section id="hist" hidden>
   <div class="grid" id="hKpis"></div>
+  <div id="hModel"></div>
   <p class="note">Every token is logged once at the snapshot age (Settings) with its score and flags; market cap is re-checked at +1 h and +24 h (live feed if still tracked, else DexScreener). "Died" = MC fell below 50% of snapshot or no pair found; "ran" = 2x or more. Outcomes are only fetched while this page is open; late checks are marked, and failed DexScreener calls are retried instead of counted as dead. Use the Lift column to tune weights in Settings.</p>
   <div class="two">
     <div><h3>By score bucket (1 h)</h3><div class="tbl"><table>
@@ -343,6 +347,11 @@ a.btn{background:var(--accent);color:#1a1205}a.btn.ghost{background:var(--panel)
     <div class="bar">
       <label style="flex:1 1 280px">Helius API key (stored in this browser only)<input id="sKey" type="password" placeholder="free at helius.dev"></label>
     </div>
+    <div class="bar">
+      <label style="flex:1 1 280px">24/7 server URL (blank = bots run in this browser)<input id="sServer" placeholder="https://your-app.up.railway.app" autocomplete="off"></label>
+      <label style="flex:1 1 200px">Server access token<input id="sToken" type="password" autocomplete="off"></label>
+    </div>
+    <p class="note" id="sMode"></p>
     <div class="bar">
       <label>Auto on-chain scan<input id="sAuto" type="checkbox"></label>
       <label>…when buyers ≥<input id="sGateB" type="number" class="n"></label>
@@ -397,16 +406,24 @@ const BAD_EXT=["permanentDelegate","transferHook","transferFeeConfig","nonTransf
 const SUS_WORDS=["rug","scam","ponzi","honeypot","test","fake","drain","exit"];
 
 /* ===================== settings / weights / rules ===================== */
-const S_DEF={key:"",autoChain:true,gateBuyers:15,gateAge:30,autoBundle:false,snipeSlots:8,snapAge:60};
+const S_DEF={key:"",server:"",token:"",autoChain:true,gateBuyers:15,gateAge:30,autoBundle:false,snipeSlots:8,snapAge:60};
 let S={...S_DEF,...store.get("settings",{})};
 if(!S.key&&store.get("key",""))S.key=store.get("key","");   // migrate v1 key
+/* modes: ENGINE = headless page run by the 24/7 server; REMOTE = this device is a remote control for that server */
+const QS=new URLSearchParams(location.search);
+const ENGINE=QS.has("engine");
+if(ENGINE&&window.__PR_ENGINE_KEY__)S.key=window.__PR_ENGINE_KEY__;
+const SERVER=ENGINE?"":(window.__PR_SERVER__?location.origin:String(S.server||"").trim().replace(/\/+$/,""));
+const REMOTE=!!SERVER;
+const hasKey=()=>!!S.key||REMOTE;
+function api(path,opt={},ms=20000){return fetchTimeout(SERVER+path,{...opt,headers:{...(opt.headers||{}),"x-token":S.token||""}},ms)}
 const W_DEF={mintAuth:40,freezeAuth:40,t22:30,supplyUp:20,devHi:25,devMid:12,devSold:30,top10Hi:20,top10Mid:10,top1:12,
-  bundleHi:30,bundle:12,burst:8,snipersHi:18,snipers:6,proSnipers:10,serialDev:12,devRugs:20,noSocials:10,lowInterest:10,smartBuy:-8};
+  bundleHi:30,bundle:12,burst:8,snipersHi:18,snipers:6,proSnipers:10,serialDev:12,devRugs:20,noSocials:10,lowInterest:10,sellPressure:10,smartBuy:-8};
 const W_LABEL={mintAuth:"Mint authority live",freezeAuth:"Freeze authority live",t22:"Risky Token-2022 ext",supplyUp:"Supply > 1B (minted more)",
   devHi:"Dev >10%",devMid:"Dev >5%",devSold:"Dev sold",top10Hi:"Top10 >35%",top10Mid:"Top10 >25%",top1:"Single holder >10%",
   bundleHi:"Bundled ≥15% supply",bundle:"Bundle detected",burst:"Launch burst (feed timing)",snipersHi:"Heavy sniping",snipers:"Some snipers",
   proSnipers:"Repeat snipers ≥2",serialDev:"Serial dev (per extra)",devRugs:"Dev's past tokens died",noSocials:"No socials",lowInterest:"Low interest",
-  smartBuy:"Smart wallet bought (per wallet, max 2)"};
+  sellPressure:"Sell pressure (sells ≥80% of buys)",smartBuy:"Smart wallet bought (per wallet, max 2)"};
 let W={...W_DEF,...store.get("weights",{})};
 let rules={bank:200,max:10,tp:2,sl:40,daily:40,floor:100,minScore:60,...store.get("rules",{})};
 
@@ -435,10 +452,11 @@ function trimWallets(){
     .slice(0,k.length-3000).forEach(x=>delete wallets[x]);
 }
 function persist(){
+  if(REMOTE)return;
   if(dirty.devReg){store.set("devReg",devReg);dirty.devReg=false}
   if(dirty.snipeReg){store.set("snipeReg",snipeReg);dirty.snipeReg=false}
   if(dirty.hist){store.set("hist",hist);dirty.hist=false}
-  if(dirty.bot){store.set("bots",{list:bots,sel:selId,lead:leadSel});dirty.bot=false}
+  if(dirty.bot){store.set("bots",{list:bots,sel:selId,lead:leadSel,learner:true,evo:EVO});dirty.bot=false}
   if(dirty.wallets){trimWallets();store.set("wallets",wallets);dirty.wallets=false}
   if(dirty.follow){store.set("follow",follow);store.set("noFollow",noFollow);dirty.follow=false}
 }
@@ -474,10 +492,11 @@ function drain(){
 }
 const rpcUrl=()=>"https://mainnet.helius-rpc.com/?api-key="+encodeURIComponent(S.key);
 function rpc(method,params){
-  if(!S.key)return Promise.reject(new Error("No Helius key (Settings)"));
+  if(!hasKey())return Promise.reject(new Error("No Helius key (Settings)"));
   return limited(async()=>{
     rpcCalls++;
-    const r=await fetchTimeout(rpcUrl(),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})},15000);
+    const body=JSON.stringify({jsonrpc:"2.0",id:1,method,params}),hd={"content-type":"application/json"};
+    const r=REMOTE?await api("/api/rpc",{method:"POST",headers:hd,body},15000):await fetchTimeout(rpcUrl(),{method:"POST",headers:hd,body},15000);
     if(!r.ok){const e=new Error("RPC "+method+" "+r.status);e.status=r.status;throw e}
     const j=await r.json();if(j.error)throw new Error(method+": "+(j.error.message||"error"));return j.result;
   });
@@ -485,8 +504,8 @@ function rpc(method,params){
 function heliusTxs(sigs){
   return limited(async()=>{
     rpcCalls++;
-    const r=await fetchTimeout("https://api.helius.xyz/v0/transactions?api-key="+encodeURIComponent(S.key),
-      {method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({transactions:sigs})},20000);
+    const opt={method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({transactions:sigs})};
+    const r=REMOTE?await api("/api/helius/transactions",opt,20000):await fetchTimeout("https://api.helius.xyz/v0/transactions?api-key="+encodeURIComponent(S.key),opt,20000);
     if(!r.ok){const e=new Error("Helius tx "+r.status);e.status=r.status;throw e}
     return r.json();
   });
@@ -652,6 +671,7 @@ function syncFollowSubs(){
   subAcc=want;
 }
 function autoFollow(){
+  if(REMOTE)return;
   const top=leaderboard().filter(([w,r])=>qualifies(r)&&!noFollow[w]).slice(0,Math.max(0,+T.autoN||0)).map(([w])=>w);
   const topSet=new Set(top);
   for(const[w,f]of Object.entries(follow))if(f.auto&&!topSet.has(w)){delete follow[w];dirty.follow=true}
@@ -675,14 +695,14 @@ function followToggle(w){
   if(!isAddr(w))return;
   if(follow[w]){delete follow[w];noFollow[w]=1}
   else{follow[w]={t:Date.now(),auto:false};delete noFollow[w]}
-  dirty.follow=true;syncFollowSubs();persist();renderAll(true);
+  dirty.follow=true;syncFollowSubs();persist();remoteSync();renderAll(true);
 }
 function renderTraders(){
   const lb=leaderboard(),q=lb.filter(([,r])=>qualifies(r)),fl=Object.keys(follow);
   const today=new Date().toDateString();
   const sb=smartLog.filter(s=>s.side==="buy"&&new Date(s.ts).toDateString()===today).length;
-  $("#tKpis").innerHTML=[["Wallets seen",Object.keys(wallets).length],["With closed trips",lb.length],["Qualify",q.length],
-    ["Followed",fl.length],["Followed buys today",sb],["Open positions tracked",wpos.size]]
+  $("#tKpis").innerHTML=[["Wallets seen",REMOTE?remoteInfo?.walletsN??0:Object.keys(wallets).length],["With closed trips",lb.length],["Qualify",q.length],
+    ["Followed",fl.length],["Followed buys today",sb],["Open positions tracked",REMOTE?remoteInfo?.wposN??0:wpos.size]]
     .map(([k,v])=>`<div class="kpi"><small>${k}</small><b>${v}</b></div>`).join("");
   if($("#traders").contains(document.activeElement)&&document.activeElement.tagName==="INPUT")return;
   const rows=[...fl.filter(w=>!wallets[w]||wallets[w].n===0).map(w=>[w,wallets[w]||null]),...lb].slice(0,150);
@@ -704,13 +724,14 @@ function buildTraderCfg(){
 }
 $("#tSave").onclick=()=>{T={minTrips:Math.max(1,+$("#tMin").value||5),minWin:+$("#tWin").value||0,autoN:Math.max(0,+$("#tAuto").value||0),
   maxFollow:Math.min(200,Math.max(1,+$("#tMax").value||40)),excludeDev:$("#tDev").checked,alert:$("#tAlert").checked};
-  store.set("tcfg",T);autoFollow();persist();renderAll(true)};
+  store.set("tcfg",T);autoFollow();persist();remoteSync();renderAll(true)};
 $("#tAddBtn").onclick=()=>{const w=$("#tAdd").value.trim();if(!isAddr(w)){$("#tAdd").value="";$("#tAdd").placeholder="not a valid address";return}
   if(!follow[w])followToggle(w);$("#tAdd").value=""};
 $("#tCsv").onclick=()=>downloadCsv([["wallet","realized_sol","trips","wins","win_pct","avg_trip_sol","avg_hold_s","avg_entry_age_s","snipe_pct","volume_sol","followed","first_seen","last_seen"]]
   .concat(leaderboard().map(([w,r])=>[w,r.pnl,r.n,r.w,(r.w/r.n*100).toFixed(1),r.pnl/r.n,(r.holdSum/r.n/1000).toFixed(0),r.ageN?(r.ageSum/r.ageN/1000).toFixed(0):"",
     r.buys?(r.snipes/r.buys*100).toFixed(1):"",r.vol,follow[w]?(follow[w].auto?"auto":"manual"):"",new Date(r.first).toISOString(),new Date(r.last).toISOString()])),"pumpradar-top-traders.csv");
 $("#tClear").onclick=()=>{if(!confirm("Reset all learned wallet stats? Manually followed wallets stay followed."))return;
+  if(REMOTE){remoteSync({clearWallets:true});return}
   wallets={};wpos.clear();wposByMint.clear();for(const[w,f]of Object.entries(follow))if(f.auto)delete follow[w];
   dirty.wallets=true;dirty.follow=true;syncFollowSubs();persist();renderAll(true)};
 
@@ -773,6 +794,7 @@ function onTrade(m){
 function feedCurve(t){return t.chain?.curve&&Date.now()-t.chain.ts<60000?t.chain.curve.progress:Math.max(0,Math.min(100,(t.vSol-30)/85*100))}
 
 function analyze(t){
+  if(REMOTE&&t._a)return t._a;
   const F=[];let score=100;const hit=(k,l,mult=1)=>{score-=(+W[k]||0)*mult;F.push({k,l})};
   const c=t.chain,b=t.bundle&&!t.bundle.partial?t.bundle:null;
   let critical=false;
@@ -805,6 +827,7 @@ function analyze(t){
   if(died>=1)hit("devRugs","dev's "+died+" past token"+(died>1?"s":"")+" died");
   if(t.socials===false)hit("noSocials","no socials");
   if(t.live&&t.buyers.size<5&&Date.now()-t.created>120000)hit("lowInterest","low interest");
+  if(t.live&&Date.now()-t.created>60000&&t.buys>=10&&t.sells>=t.buys*0.8)hit("sellPressure",`sells ${t.sells}/${t.buys} buys`);
   const sm=t.smart?.size||0;
   if(sm>0)hit("smartBuy",sm+" smart wallet"+(sm>1?"s":"")+" in",Math.min(sm,2));
   score=Math.max(0,Math.min(100,Math.round(score)));if(critical)score=Math.min(score,10);
@@ -814,7 +837,7 @@ function analyze(t){
 const scoreCls=s=>s>=70?"s-good":s>=45?"s-warn":"s-bad";
 
 async function scanToken(t,deep){
-  if(!S.key||inflight.has(t.mint))return;
+  if(!hasKey()||inflight.has(t.mint))return;
   inflight.add(t.mint);t.scan="…";
   try{
     if(deep&&!t.bundle){t.bundle=await txScan(t.mint);if(!t.dev&&t.bundle.dev)t.dev=t.bundle.dev}
@@ -855,10 +878,11 @@ function links(mint,l={}){
   return `<a href="https://pump.fun/coin/${mint}" target="_blank" rel="noopener">pump</a> <a href="https://dexscreener.com/solana/${mint}" target="_blank" rel="noopener">dex</a> <a href="https://solscan.io/token/${mint}" target="_blank" rel="noopener">scan</a>${l.tw?` <a href="${esc(l.tw)}" target="_blank" rel="noopener noreferrer">x</a>`:""}`;
 }
 function chainCell(t){
+  if(REMOTE)return t.scan==="ok"?`✓${t.bundle?" ⛓":""}`:t.scan==="…"?"…":t.scan==="err"?`<span class="neg">err</span>`:`<span class="mute">—</span>`;
   if(t.scan==="…")return `<span class="mute">…</span>`;
   if(t.scan==="err")return `<span class="neg" title="${esc(t.scanErr)}">err</span> <button class="btn ghost mini" data-scan="${t.mint}">retry</button>`;
   if(t.scan==="ok")return `✓${t.bundle&&!t.bundle.partial?" ⛓":""}${!t.bundle?` <button class="btn ghost mini" data-scan="${t.mint}">tx</button>`:""}`;
-  return S.key?`<button class="btn ghost mini" data-scan="${t.mint}">scan</button>`:`<span class="mute">no key</span>`;
+  return hasKey()?`<button class="btn ghost mini" data-scan="${t.mint}">scan</button>`:`<span class="mute">no key</span>`;
 }
 function renderScan(){
   const f={s:+$("#fScore").value,d:+$("#fDev").value,b:+$("#fBuyers").value,c:+$("#fCurve").value,sm:+$("#fSmart").value,ds:$("#fDevSold").checked,cr:$("#fCrit").checked};
@@ -880,9 +904,9 @@ document.addEventListener("click",e=>{
   const r=e.target.closest("[data-unwatch]");if(r){delete watch[r.dataset.unwatch];store.set("watch",watch);renderAll(true);return}
   const c=e.target.closest("[data-check]");if(c){$("#cMint").value=c.dataset.check;showTab("check");runCheck();return}
   const sc=e.target.closest("[data-scan]");if(sc){const t=tokens.get(sc.dataset.scan);if(t){t.scan="";scanToken(t,true)}return}
-  const bs=e.target.closest("[data-botsell]");if(bs){const p=B.pos[bs.dataset.botsell];if(p)botSell(B,p,tokens.get(p.mint),1,"manual close");renderAll(true);return}
+  const bs=e.target.closest("[data-botsell]");if(bs){const p=B.pos[bs.dataset.botsell];if(p&&REMOTE){remoteSync({close:{id:B.id,mint:p.mint}});return}if(p)botSell(B,p,tokens.get(p.mint),1,"manual close");renderAll(true);return}
   const bsel=e.target.closest("[data-botsel]");if(bsel){selectBot(bsel.dataset.botsel);return}
-  const btg=e.target.closest("[data-bottog]");if(btg){const b=bots.find(x=>x.id===btg.dataset.bottog);if(b){b.on=!b.on;if(b.on&&!b.started)b.started=Date.now();dirty.bot=true;persist();renderAll(true)}}
+  const btg=e.target.closest("[data-bottog]");if(btg){const b=bots.find(x=>x.id===btg.dataset.bottog);if(b){b.on=!b.on;if(b.on&&!b.started)b.started=Date.now();dirty.bot=true;persist();remoteSync();renderAll(true)}}
 });
 
 /* ===================== WATCHLIST ===================== */
@@ -980,10 +1004,10 @@ async function runCheck(){
   if(checking)return;checking=true;
   $("#cOut").innerHTML=`<div class="panel">Checking ${esc(short(mint))}… (market → launch txs → on-chain → sell route)</div>`;
   const rep={mint,ts:Date.now(),errors:[]};
-  const live=tokens.get(mint);
+  const live=REMOTE?null:tokens.get(mint);
   try{
     const failed=new Set();rep.pair=(await dexPairs([mint],failed))[mint]||null;if(failed.size)rep.errors.push("DexScreener unreachable");
-    if(S.key){
+    if(hasKey()){
       try{rep.bundle=live?.bundle||await txScan(mint)}catch(e){rep.errors.push("Tx scan: "+e.message)}
       rep.dev=live?.dev||rep.bundle?.dev||null;
       try{rep.chain=await chainScan(mint,rep.dev)}catch(e){rep.errors.push("On-chain: "+e.message)}
@@ -1074,12 +1098,13 @@ function logHistory(t,force){
   const age=Date.now()-t.created;
   if(age<S.snapAge*1000)return;   // not at snapshot age yet (or trimmed before it): skip
   const a=analyze(t);
-  hist.push({m:t.mint,sy:t.symbol,dev:t.dev,t0:t.created,ts:Date.now(),sc:a.score,fk:a.flags.map(x=>x.k),mc0:t.mcSol,ch:!!t.chain,bd:!!(t.bundle&&!t.bundle.partial),sm:a.smart,mc1:null,t1:null,mc24:null,t24:null});
+  hist.push({m:t.mint,sy:t.symbol,dev:t.dev,t0:t.created,ts:Date.now(),sc:a.score,fk:a.flags.map(x=>x.k),mc0:t.mcSol,ch:!!t.chain,bd:!!(t.bundle&&!t.bundle.partial),sm:a.smart,by:a.buyers,ft:featuresOf(t,a).join(","),mc1:null,t1:null,mc24:null,t24:null});
   histIdx.add(t.mint);
-  if(hist.length>4000){hist.splice(0,hist.length-4000)}
+  if(hist.length>3000){hist.splice(0,hist.length-3000)}
   dirty.hist=true;
 }
 async function checkOutcomes(){
+  if(REMOTE)return;
   const now=Date.now(),due=[];
   for(const h of hist){
     if(h.mc1==null&&now>=h.t0+H1)due.push([h,1]);
@@ -1101,7 +1126,7 @@ async function checkOutcomes(){
       else{mc=0;nd=true}}
     if(k===1){h.mc1=mc;h.t1=now;h.nd1=nd}else{h.mc24=mc;h.t24=now;h.nd24=nd}
   }
-  dirty.hist=true;rebuildDevDied();
+  dirty.hist=true;rebuildDevDied();buildModel();
 }
 setInterval(()=>checkOutcomes().catch(()=>{}),60000);setTimeout(()=>checkOutcomes().catch(()=>{}),5000);
 const xOf=(h,k)=>{const v=k===1?h.mc1:h.mc24;return v==null||!h.mc0?null:v/h.mc0};
@@ -1111,6 +1136,11 @@ function outcomeStats(list){
   return{n:list.length,r:res.length,died:res.length?died/res.length*100:null,ran:res.length?ran/res.length*100:null,med:median(res.map(h=>h.mc1/h.mc0))};
 }
 function renderHist(){
+  if(REMOTE)pollHist();
+  const L=REMOTE?remoteInfo?.learn:learnInfo();
+  const fl=a=>(a||[]).map(f=>`<div class="small">${esc(featLabel(f.k))}: 2x ${(f.ran*100).toFixed(0)}%, rug ${(f.die*100).toFixed(0)}% <span class="mute">(n=${f.n})</span></div>`).join("")||`<div class="small mute">needs more data</div>`;
+  $("#hModel").innerHTML=L&&L.n?`<div class="panel"><b>Learned model</b> · ${L.n} outcomes · ${L.ready?"active: the Learner bot trades on it":`Learner bot starts at ${L.min}`} · base 2x ${(L.base.ran*100).toFixed(0)}% · base rug ${(L.base.die*100).toFixed(0)}%
+    <div class="two" style="margin-top:8px"><div><b class="pos">Best signs</b>${fl(L.good)}</div><div><b class="neg">Worst signs</b>${fl(L.bad)}</div></div></div>`:"";
   const base=outcomeStats(hist);
   const late=hist.filter(h=>h.t1&&h.t1-h.t0>H1+900e3).length;
   $("#hKpis").innerHTML=[["Logged",hist.length],["Resolved 1 h",base.r],["Resolved 24 h",hist.filter(h=>h.mc24!=null).length],
@@ -1137,15 +1167,16 @@ $("#hClear").onclick=()=>{if(!confirm("Delete all score history?"))return;hist=[
 
 /* ===================== PAPER BOTS (several strategies in parallel) ===================== */
 const BOT_CFG={startUsd:200,minScore:70,minAge:45,maxAge:600,minBuyers:15,minCurve:5,maxCurve:70,minSmart:0,maxOpen:3,
-  tpSell:50,trail:25,maxHold:30,exitScore:30,slip:3,feeSol:0.002,pumpFee:1,requireChain:true,exitDevSold:true,exitSmartSold:false,flagOffScript:true};
+  tpSell:50,trail:25,maxHold:30,exitScore:30,slip:3,feeSol:0.002,pumpFee:1,minP:0.2,minEdge:0.05,learn:false,requireChain:true,exitDevSold:true,exitSmartSold:false,flagOffScript:true};
 const BOT_LABEL={startUsd:"Paper bankroll $",minScore:"Min score",minAge:"Min age s",maxAge:"Max age s",minBuyers:"Min buyers",minCurve:"Min curve %",
   maxCurve:"Max curve %",minSmart:"Min smart wallets",maxOpen:"Max open",tpSell:"Sell % at TP",trail:"Trail % after TP",maxHold:"Max hold min",exitScore:"Exit if score <",
   slip:"Copy-lag slip %",feeSol:"Fee SOL/trade",pumpFee:"Pump fee %",requireChain:"Require on-chain + tx scan",exitDevSold:"Exit on dev sell",
-  exitSmartSold:"Exit when smart wallets sell",flagOffScript:"Flag my buys w/o lead signal"};
+  exitSmartSold:"Exit when smart wallets sell",flagOffScript:"Flag my buys w/o lead signal",minP:"Min P(2x) (model)",minEdge:"Min edge (model)",learn:"Use learned model"};
 const PRESETS=[
   ["Safety",{}],
   ["Smart money",{minScore:55,minSmart:1,exitSmartSold:true,minAge:20,maxAge:1800,minBuyers:10}],
-  ["Momentum",{minScore:60,minBuyers:30,minCurve:20,maxCurve:80,maxHold:15,trail:20,minAge:60,maxAge:900}]];
+  ["Momentum",{minScore:60,minBuyers:30,minCurve:20,maxCurve:80,maxHold:15,trail:20,minAge:60,maxAge:900}],
+  ["Learner",{learn:true,minScore:40,minAge:55,maxAge:240,minBuyers:5,minCurve:0,maxCurve:80}]];
 function newBot(name,cfg,on=true){
   return{id:Math.random().toString(36).slice(2,9),name,on,cfg:{...BOT_CFG,...cfg},cash:null,startSol:null,started:on?Date.now():null,
     pos:{},closed:[],sig:[],traded:[],day:"",dayStartEq:0,eqHist:[],peakEq:0,maxDD:0,locked:null};
@@ -1161,8 +1192,10 @@ let bots,selId,leadSel;
     bots=[first,newBot(...PRESETS[1]),newBot(...PRESETS[2])];leadSel="auto";dirty.bot=true;
     try{localStorage.removeItem("pr_bot")}catch{}
   }
+  if(!saved?.learner&&!bots.some(b=>b.cfg.learn)){bots.push(newBot(...PRESETS[3]));dirty.bot=true}
   if(!bots.find(b=>b.id===selId))selId=bots[0].id;
 }
+let EVO={on:true,n:0,log:[],...(store.get("bots",null)?.evo||{})};
 let B=bots.find(b=>b.id===selId);
 const anyPos=m=>{for(const b of bots)if(b.pos[m])return b.pos[m];return null};
 function selectBot(id){const b=bots.find(x=>x.id===id);if(!b)return;B=b;selId=id;dirty.bot=true;buildBotCfg();renderAll(true)}
@@ -1174,9 +1207,10 @@ function buildBotCfg(){
     +`<span class="note" style="align-self:center">TP ${rules.tp}x, SL ${rules.sl}%, size ${rules.max}% come from Risk rules.</span>`;
 }
 document.addEventListener("change",e=>{
-  const k=e.target.dataset?.bcfg;if(k){B.cfg[k]=e.target.type==="checkbox"?e.target.checked:+e.target.value;dirty.bot=true}
-  if(e.target.id==="botName"){B.name=e.target.value.trim().slice(0,30)||B.name;dirty.bot=true;renderAll(true)}
-  if(e.target.id==="botLead"){leadSel=e.target.value;dirty.bot=true;renderAll(true)}
+  const k=e.target.dataset?.bcfg;if(k){B.cfg[k]=e.target.type==="checkbox"?e.target.checked:+e.target.value;dirty.bot=true;remoteSync()}
+  if(e.target.id==="evoOn"){EVO.on=e.target.checked;dirty.bot=true;remoteSync()}
+  if(e.target.id==="botName"){B.name=e.target.value.trim().slice(0,30)||B.name;dirty.bot=true;remoteSync();renderAll(true)}
+  if(e.target.id==="botLead"){leadSel=e.target.value;dirty.bot=true;remoteSync();renderAll(true)}
   if(e.target.dataset?.note){notes[e.target.dataset.note]=e.target.value;store.set("notes",notes)}
 });
 const spotOf=t=>t&&t.mcSol?t.mcSol/SUPPLY:null;
@@ -1206,13 +1240,14 @@ function signal(b,kind,p,extra){
   const ft=followTarget();
   if(ft&&ft.b===b){
     const ready=!ft.practice;
+    if(ENGINE&&window.__prSignal){const sz=yourSize();try{window.__prSignal({bot:b.name,kind,sym:p.sym,mint:p.mint,practice:ft.practice,mc:extra.mcUsd,why:extra.why,sizeUsd:sz.usd,sizeSol:sz.sol,locked:sz.locked,tp:rules.tp,sl:rules.sl})}catch{}}
     notify(`PumpRadar ${ready?"COPY":"PRACTICE"} ${kind}`,`[${b.name}] ${text}`);
     beep(kind);flashTitle(`⚡ ${kind} ${p.sym}`);
     log(`${ready?"COPY":"PRACTICE"} [${b.name}] ${text}`);
   }
   dirty.bot=true;
 }
-function botBuy(b,t,sol,a){
+function botBuy(b,t,sol,a,pr){
   const c=b.cfg,spot=spotOf(t);if(!spot)return;
   const x=sol*(1-c.pumpFee/100);
   const avg=spot*(1+x/(t.vSol||30))*(1+c.slip/100);
@@ -1222,7 +1257,7 @@ function botBuy(b,t,sol,a){
     score:a.score,fk:a.flags.map(f=>f.k),smart:a.smart,tpHit:false,realized:0};
   b.traded.push(t.mint);if(b.traded.length>2000)b.traded.splice(0,1000);
   subTrades([t.mint]);
-  signal(b,"BUY",b.pos[t.mint],{sol,mcUsd:t.mcSol*SOL_USD,why:`score ${a.score}, ${a.buyers} buyers, curve ${a.curve.toFixed(0)}%${a.smart?`, ${a.smart} smart`:""}`});
+  signal(b,"BUY",b.pos[t.mint],{sol,mcUsd:t.mcSol*SOL_USD,why:`score ${a.score}, ${a.buyers} buyers, curve ${a.curve.toFixed(0)}%${a.smart?`, ${a.smart} smart`:""}${pr?`, P(2x) ${(pr.pRan*100).toFixed(0)}% / rug ${(pr.pDie*100).toFixed(0)}%`:""}`});
 }
 function botSell(b,p,t,frac,why){
   const c=b.cfg,spot=spotOf(t)??p.mark;if(!spot)return;
@@ -1234,7 +1269,7 @@ function botSell(b,p,t,frac,why){
   const full=frac>=1||p.tokens<=1e-6;
   signal(b,full?"SELL ALL":`SELL ${Math.round(frac*100)}%`,p,{sol:proceeds,mcUsd:spot*SUPPLY*SOL_USD,why:why+` · ${pnl>=0?"+":""}${fmt(pnl,3)} SOL`});
   if(full){b.closed.unshift({mint:p.mint,sym:p.sym,t:p.t,exit:Date.now(),pnl:p.realized,score:p.score,fk:p.fk,smart:p.smart||0,why,x:spot/p.entry,entry:p.entry,cost:p.cost0??null});
-    if(b.closed.length>1000)b.closed.length=1000;delete b.pos[p.mint]}
+    if(b.closed.length>500)b.closed.length=500;delete b.pos[p.mint]}
   dirty.bot=true;
 }
 function tickBot(b,now){
@@ -1259,7 +1294,7 @@ function tickBot(b,now){
   if(b.day!==today){b.day=today;b.dayStartEq=eq}
   b.peakEq=Math.max(b.peakEq||eq,eq);b.maxDD=Math.max(b.maxDD||0,(b.peakEq-eq)/b.peakEq*100);
   const last=b.eqHist[b.eqHist.length-1];
-  if(!last||now-last[0]>=60000){b.eqHist.push([now,eq*SOL_USD]);if(b.eqHist.length>1500)b.eqHist.splice(0,500);dirty.bot=true}
+  if(!last||now-last[0]>=60000){b.eqHist.push([now,eq*SOL_USD]);if(b.eqHist.length>1000)b.eqHist.splice(0,300);dirty.bot=true}
   const dayLossUsd=(b.dayStartEq-eq)*SOL_USD,eqUsd=eq*SOL_USD;
   b.locked=dayLossUsd>=rules.daily?"daily loss limit":eqUsd<=rules.floor?"bankroll floor":null;
   if(b.locked||Object.keys(b.pos).length>=c.maxOpen)return;
@@ -1267,13 +1302,14 @@ function tickBot(b,now){
   const cands=[...tokens.values()].filter(t=>t.live&&!b.pos[t.mint]&&!traded.has(t.mint)&&!t.devSold&&!t.graduated)
     .filter(t=>{const age=(now-t.created)/1000;return age>=c.minAge&&age<=c.maxAge})
     .map(t=>[t,analyze(t)]).filter(([t,a])=>a.score>=c.minScore&&a.buyers>=c.minBuyers&&a.curve>=c.minCurve&&a.curve<=c.maxCurve&&a.smart>=c.minSmart&&!a.critical)
-    .sort((x,y)=>y[1].score-x[1].score);
-  for(const[t,a]of cands){
+    .map(([t,a])=>[t,a,c.learn?predict(t,a):null]).filter(([t,a,p])=>!c.learn||(p&&p.pRan>=c.minP&&p.ev>=c.minEdge))
+    .sort((x,y)=>c.learn?y[2].ev-x[2].ev:y[1].score-x[1].score);
+  for(const[t,a,p]of cands){
     if(c.requireChain&&(!t.chain||!t.bundle||t.bundle.partial)){
-      if(S.key&&inflight.size<6&&t.scan!=="…"&&t.scan!=="err"&&!(t.scan==="ok"&&t.bundle))scanToken(t,true);continue}
+      if(hasKey()&&inflight.size<6&&t.scan!=="…"&&t.scan!=="err"&&!(t.scan==="ok"&&t.bundle))scanToken(t,true);continue}
     const size=Math.min(eq*rules.max/100,b.cash-c.feeSol-0.001);
     if(size<0.01)break;
-    botBuy(b,t,size,a);
+    botBuy(b,t,size,a,p);
     if(Object.keys(b.pos).length>=c.maxOpen)break;
   }
 }
@@ -1283,13 +1319,13 @@ function botTick(){
   if(!SOL_USD)return;
   const now=Date.now();for(const b of bots)tickBot(b,now);
 }
-$("#botToggle").onclick=()=>{B.on=!B.on;if(B.on&&!B.started)B.started=Date.now();dirty.bot=true;persist();renderAll(true)};
-$("#botAll").onclick=()=>{const all=bots.every(b=>b.on);for(const b of bots){b.on=!all;if(b.on&&!b.started)b.started=Date.now()}dirty.bot=true;persist();renderAll(true)};
-$("#botAdd").onclick=()=>{const b=newBot(B.name+" copy",{...B.cfg});bots.push(b);selectBot(b.id);persist()};
+$("#botToggle").onclick=()=>{B.on=!B.on;if(B.on&&!B.started)B.started=Date.now();dirty.bot=true;persist();remoteSync();renderAll(true)};
+$("#botAll").onclick=()=>{const all=bots.every(b=>b.on);for(const b of bots){b.on=!all;if(b.on&&!b.started)b.started=Date.now()}dirty.bot=true;persist();remoteSync();renderAll(true)};
+$("#botAdd").onclick=()=>{const b=newBot((B.name+" copy").slice(0,30),{...B.cfg});bots.push(b);selectBot(b.id);persist();remoteSync()};
 $("#botDel").onclick=()=>{if(bots.length<2||!confirm(`Delete bot "${B.name}" and its paper history?`))return;
-  bots=bots.filter(b=>b!==B);if(leadSel===B.id)leadSel="auto";selectBot(bots[0].id);persist()};
+  const gone=B.id;bots=bots.filter(b=>b!==B);if(leadSel===gone)leadSel="auto";selectBot(bots[0].id);persist();remoteSync({del:[gone]})};
 $("#botReset").onclick=()=>{if(!confirm(`Reset "${B.name}"? Its open paper positions and closed trades are cleared.`))return;
-  const fresh=newBot(B.name,B.cfg,B.on);fresh.id=B.id;bots[bots.indexOf(B)]=fresh;B=fresh;dirty.bot=true;persist();renderAll(true)};
+  const fresh=newBot(B.name,B.cfg,B.on);fresh.id=B.id;fresh.resetAt=Date.now();bots[bots.indexOf(B)]=fresh;B=fresh;dirty.bot=true;persist();remoteSync();renderAll(true)};
 $("#botCsv").onclick=()=>downloadCsv([["bot","entry","exit","symbol","mint","pnl_sol","exit_x","score_in","smart_in","flags_in","exit_reason"]]
   .concat(B.closed.map(c=>[B.name,new Date(c.t).toISOString(),new Date(c.exit).toISOString(),c.sym,c.mint,c.pnl,c.x,c.score,c.smart??"",c.fk.join("|"),c.why])),
   `pumpradar-paper-${B.name.replace(/\W+/g,"-").toLowerCase()}.csv`);
@@ -1330,12 +1366,16 @@ function botEntries(b){
 }
 /* ===================== FOLLOW (phone-first "what do I do now") ===================== */
 /* Follows the lead bot when one is copy-ready (or picked manually); otherwise the best bot so far, in PRACTICE mode. */
+let practiceId=null;
 function followTarget(){
+  if(REMOTE&&remoteInfo?.followId){const b=bots.find(x=>x.id===remoteInfo.followId);if(b)return{b,practice:!!remoteInfo.followPractice,manual:leadSel!=="auto"}}
   const lead=leadBot();
   if(lead)return{b:lead,practice:!readiness(lead).ok,manual:leadSel!=="auto"};
   const pool=bots.filter(b=>b.on);if(!pool.length)return null;
   const best=[...pool].sort((x,y)=>((retPct(y)??0)-(retPct(x)??0))||(y.closed.length-x.closed.length))[0];
-  return{b:best,practice:true,manual:false};
+  const cur=pool.find(b=>b.id===practiceId);   // sticky: switch only when another bot is clearly ahead
+  if(!cur||(best!==cur&&best.closed.length>=10&&(retPct(best)??0)-(retPct(cur)??0)>10))practiceId=best.id;
+  return{b:pool.find(b=>b.id===practiceId),practice:true,manual:false};
 }
 let ack=new Set(store.get("ack",[]));
 function ackSig(id){ack.add(id);const a=[...ack];if(a.length>500)ack=new Set(a.slice(-300));store.set("ack",[...ack]);renderAll(true)}
@@ -1349,10 +1389,13 @@ function yourSize(){
 }
 function renderFollow(){
   const ft=followTarget(),now=Date.now();
-  const feedOk=ws?.readyState===1&&now-lastMsg<30000;
+  const feedOk=REMOTE?!remoteErr&&!!remoteInfo?.feed:(ws?.readyState===1&&now-lastMsg<30000);
   let st=[];
-  if(!S.key)st.push(`<div class="banner bad">Add your Helius key in Settings. Without it the bots can't check tokens and won't trade.</div>`);
-  if(!feedOk)st.push(`<div class="banner warn">Reconnecting to the live feed…</div>`);
+  if(!hasKey())st.push(`<div class="banner bad">Add your Helius key in Settings. Without it the bots can't check tokens and won't trade.</div>`);
+  if(REMOTE&&remoteErr)st.push(`<div class="banner bad">Server: ${esc(remoteErr)}</div>`);
+  else if(!feedOk)st.push(`<div class="banner warn">Reconnecting to the live feed…</div>`);
+  else if(REMOTE)st.push(`<div class="banner ok">Running 24/7 on your server. Telegram alerts arrive even with the phone locked.</div>`);
+  $("#fNote").hidden=REMOTE;$("#fPhone").hidden=REMOTE;
   if(lastPauseMs>60000&&now-lastResumeAt<120000)st.push(`<div class="banner warn">Bots were paused ${dur(lastPauseMs)} while this screen was off. Exits were re-checked on return.</div>`);
   const sz=yourSize();
   if(sz.locked)st.push(`<div class="banner bad">STOP: your risk rules locked you out for today. Don't copy anything.</div>`);
@@ -1402,10 +1445,11 @@ function renderRace(){
     return `<div class="card"><div class="row"><span><b>${esc(b.name)}</b>${ft?.b===b?` <span class="tag auto">following</span>`:""}</span>
       <span class="${cls(r)}">${r==null?"—":(r>0?"+":"")+fmt(r,1)+"%"}</span></div>
       <div class="prog"><i style="width:${pct}%"></i></div>
-      <div class="mute small">${b.closed.length}/50 trades · ${passed}/5 checks${rd.ok?" · ✓ copy-ready":""} · ${Object.keys(b.pos).length} open · ${b.on?(b.locked?"locked":"running"):"stopped"}</div></div>`}).join("");
+      <div class="mute small">${b.cfg.learn&&modelN()<LEARN_MIN?`learning: ${modelN()}/${LEARN_MIN} outcomes · `:""}${b.closed.length}/50 trades · ${passed}/5 checks${rd.ok?" · ✓ copy-ready":""} · ${Object.keys(b.pos).length} open · ${b.on?(b.locked?"locked":"running"):"stopped"}</div></div>`}).join("");
 }
 /* re-mark open positions from DexScreener (after the phone was asleep, or for tokens that went quiet) */
 async function refreshMarks(){
+  if(REMOTE)return;
   const now=Date.now();
   const ms=[...new Set(bots.flatMap(b=>Object.keys(b.pos)))].filter(m=>{const t=tokens.get(m);return !t||now-t.lastTrade>60000});
   if(!ms.length)return;
@@ -1420,6 +1464,7 @@ async function refreshMarks(){
 }
 setInterval(()=>refreshMarks().catch(()=>{}),60000);
 document.addEventListener("visibilitychange",()=>{
+  if(REMOTE){if(document.visibilityState==="visible")pollRemote();return}
   if(document.visibilityState==="hidden"){hiddenAt=Date.now();persist();return}
   if(hiddenAt){lastPauseMs=Date.now()-hiddenAt;lastResumeAt=Date.now();hiddenAt=null}
   if(!ws||ws.readyState!==1||Date.now()-lastMsg>10000)reconnectNow();
@@ -1468,14 +1513,19 @@ function renderBotAnalysis(){
 function renderBot(){
   const lead=leadBot();
   let banner="";
-  if(!S.key)banner=`<div class="banner bad">No Helius key (Settings). Bots that require on-chain scans won't enter.</div>`;
+  if(!hasKey())banner=`<div class="banner bad">No Helius key (Settings). Bots that require on-chain scans won't enter.</div>`;
   else if(!SOL_USD)banner=`<div class="banner warn">Waiting for SOL price…</div>`;
+  else if(REMOTE)banner=`<div class="banner ok">Bots run 24/7 on your server. Alerts come by Telegram.</div>`;
   else if(typeof Notification!=="undefined"&&Notification.permission!=="granted")banner=`<div class="banner warn">Desktop alerts are off. Enable them so COPY signals reach you when this tab is in the background.</div>`;
   $("#botBanner").innerHTML=banner;
   const sel=$("#botLead");
   if(document.activeElement!==sel)sel.innerHTML=`<option value="auto">Auto (best copy-ready bot)</option>`+bots.map(b=>`<option value="${b.id}">${esc(b.name)} (manual)</option>`).join("");
   sel.value=bots.some(b=>b.id===leadSel)?leadSel:"auto";
+  if(REMOTE)$("#botNote").textContent="Every bot trades fake SOL around the clock on your server with its own strategy. COPY signals come from the bot in \"Copy from\" (Auto = the best copy-ready bot) and are sent to Telegram.";
+  $("#notifBtn2").hidden=REMOTE;
   $("#botAll").textContent=bots.every(b=>b.on)?"Stop all bots":"Start all bots";
+  if(document.activeElement!==$("#evoOn"))$("#evoOn").checked=!!EVO.on;
+  $("#evoLog").textContent=EVO.log?.[0]?`Last evolution: ${EVO.log[0].s} (${ago(EVO.log[0].ts)} ago).`:"Auto-evolve spawns tweaked copies of the best bot once it has 30 profitable trades, and retires copies that lose money after 40.";
   $("#botList").innerHTML=bots.map(b=>{
     const r=retPct(b),g=grp(b.closed),pf=profitFactor(b),rd=readiness(b),passed=rd.checks.filter(c=>c[0]).length;
     return `<tr${b===B?' style="outline:1px solid var(--accent)"':""}><td class="l"><button class="linkbtn" data-botsel="${b.id}"><b>${esc(b.name)}</b></button>${lead===b?` <span class="tag auto">lead</span>`:""}</td>
@@ -1518,13 +1568,13 @@ $("#wAddr").value=store.get("addr","");
 async function loadWallet(){
   const addr=$("#wAddr").value.trim(),pages=Math.min(20,+$("#wPages").value||3);
   if(!isAddr(addr))return $("#wMsg").textContent="That doesn't look like a Solana public address.";
-  if(!S.key)return $("#wMsg").textContent="Add a Helius API key in Settings.";
+  if(!hasKey())return $("#wMsg").textContent="Add a Helius API key in Settings.";
   store.set("addr",addr);$("#wMsg").textContent="Loading transactions…";
   let all=[],before="";
   try{
     for(let p=0;p<pages;p++){
-      const url=`https://api.helius.xyz/v0/addresses/${addr}/transactions?api-key=${encodeURIComponent(S.key)}&limit=100${before?"&before="+before:""}`;
-      const r=await fetchTimeout(url,{},20000);if(!r.ok)throw new Error("Helius "+r.status);
+      const q=`limit=100${before?"&before="+before:""}`;
+      const r=REMOTE?await api(`/api/helius/addr/${addr}?${q}`):await fetchTimeout(`https://api.helius.xyz/v0/addresses/${addr}/transactions?api-key=${encodeURIComponent(S.key)}&${q}`,{},20000);if(!r.ok)throw new Error("Helius "+r.status);
       const j=await r.json();if(!j.length)break;all=all.concat(j);before=j[j.length-1].signature;
       $("#wMsg").textContent=`Loaded ${all.length} transactions…`;
     }
@@ -1588,7 +1638,7 @@ function renderWallet(){
 /* ===================== RISK RULES ===================== */
 const rmap={rBank:"bank",rMax:"max",rTp:"tp",rSl:"sl",rDaily:"daily",rFloor:"floor",rMinScore:"minScore"};
 for(const[id,k]of Object.entries(rmap))$("#"+id).value=rules[k];
-$("#rSave").onclick=()=>{for(const[id,k]of Object.entries(rmap))rules[k]=+$("#"+id).value;store.set("rules",rules);buildBotCfg();renderAll(true)};
+$("#rSave").onclick=()=>{for(const[id,k]of Object.entries(rmap))rules[k]=+$("#"+id).value;store.set("rules",rules);buildBotCfg();remoteSync();renderAll(true)};
 function riskCheck(){
   const breaks=[],px=SOL_USD||0,maxUsd=rules.bank*rules.max/100;
   const realizedUsd=trades.reduce((a,t)=>a+(t.realized||0),0)*px;
@@ -1659,19 +1709,195 @@ $("#csvBtn").onclick=()=>downloadCsv([["time","token","mint","side","sol","token
 
 /* ===================== SETTINGS ===================== */
 function buildSettings(){
-  $("#sKey").value=S.key;$("#sAuto").checked=S.autoChain;$("#sGateB").value=S.gateBuyers;$("#sGateAge").value=S.gateAge;
+  $("#sKey").value=S.key;$("#sServer").value=window.__PR_SERVER__?location.origin:S.server||"";$("#sServer").disabled=!!window.__PR_SERVER__;$("#sToken").value=S.token||"";
+  $("#sMode").textContent=REMOTE?`Server mode: the bots run 24/7 on ${SERVER}. This device is a remote control; it doesn't need a Helius key.`
+    :"Local mode: the bots run only while this page is open. Add a server URL to switch to 24/7 mode.";$("#sAuto").checked=S.autoChain;$("#sGateB").value=S.gateBuyers;$("#sGateAge").value=S.gateAge;
   $("#sAutoB").checked=S.autoBundle;$("#sSnipe").value=S.snipeSlots;$("#sSnap").value=S.snapAge;
   $("#wGrid").innerHTML=Object.keys(W_DEF).map(k=>`<label>${esc(W_LABEL[k])}<input type="number" class="n" data-w="${k}" value="${W[k]}"></label>`).join("");
 }
 $("#sSave").onclick=()=>{
-  S={key:$("#sKey").value.trim(),autoChain:$("#sAuto").checked,gateBuyers:+$("#sGateB").value||0,gateAge:+$("#sGateAge").value||0,
+  const prevServer=S.server,prevToken=S.token;
+  S={key:$("#sKey").value.trim(),server:window.__PR_SERVER__?"":$("#sServer").value.trim(),token:$("#sToken").value.trim(),autoChain:$("#sAuto").checked,gateBuyers:+$("#sGateB").value||0,gateAge:+$("#sGateAge").value||0,
     autoBundle:$("#sAutoB").checked,snipeSlots:Math.max(1,+$("#sSnipe").value||8),snapAge:Math.max(10,+$("#sSnap").value||60)};
   store.set("settings",S);try{localStorage.removeItem("pr_key")}catch{}
+  if(S.server!==prevServer||S.token!==prevToken){location.reload();return}
+  remoteSync({S});
   $("#sSave").textContent="Saved";setTimeout(()=>$("#sSave").textContent="Save settings",1200);
 };
-$("#wSave").onclick=()=>{document.querySelectorAll("[data-w]").forEach(i=>W[i.dataset.w]=+i.value||0);store.set("weights",W);
+$("#wSave").onclick=()=>{document.querySelectorAll("[data-w]").forEach(i=>W[i.dataset.w]=+i.value||0);store.set("weights",W);remoteSync();
   $("#wSave").textContent="Saved";setTimeout(()=>$("#wSave").textContent="Save weights",1200)};
 $("#wReset").onclick=()=>{W={...W_DEF};store.set("weights",W);buildSettings()};
+
+/* ===================== LEARNED MODEL (naive Bayes on real 1 h outcomes) ===================== */
+const LEARN_MIN=150;
+const bucket=(v,cuts)=>{let i=0;while(i<cuts.length&&v>=cuts[i])i++;return i};
+function featuresOf(t,a){
+  const ageMin=Math.max(0.5,(Date.now()-t.created)/60000);
+  const f=a.flags.map(x=>x.k);
+  f.push("b"+bucket(a.buyers,[10,20,40,80]),"c"+bucket(a.curve,[5,15,30,50]),"s"+bucket(t.sells/(t.buys+1),[.2,.4,.7]),
+    "v"+bucket(a.buyers/ageMin,[10,20,40]),"m"+Math.min(a.smart||0,2),"q"+Math.min(4,Math.floor(a.score/20)));
+  return f;
+}
+function featLabel(k){
+  if(W_LABEL[k])return W_LABEL[k];
+  const n=+k.slice(1),t=k[0];
+  const r=(cuts,u)=>n===0?`<${cuts[0]}${u}`:n>=cuts.length?`≥${cuts[cuts.length-1]}${u}`:`${cuts[n-1]}–${cuts[n]}${u}`;
+  return t==="b"?"buyers "+r([10,20,40,80],""):t==="c"?"curve "+r([5,15,30,50],"%"):t==="s"?"sell/buy ratio "+r([.2,.4,.7],"")
+    :t==="v"?"buyers per min "+r([10,20,40],""):t==="m"?"smart wallets "+n:t==="q"?`score ${n*20}–${n*20+19}`:k;
+}
+let MODEL=null;
+function buildModel(){
+  const M={n:0,ran:{y:0},die:{y:0},all:{}};
+  for(const h of hist){
+    if(h.mc1==null||!h.mc0)continue;
+    const f=h.ft?h.ft.split(","):h.fk.concat("q"+Math.min(4,Math.floor(h.sc/20)));
+    const ran=h.mc1>=h.mc0*2,die=!!h.nd1||h.mc1<h.mc0*0.5;
+    M.n++;if(ran)M.ran.y++;if(die)M.die.y++;
+    for(const k of f){const a=M.all[k]??={n:0,ran:0,die:0};a.n++;if(ran)a.ran++;if(die)a.die++}
+  }
+  MODEL=M;
+}
+function nbProb(M,f,lab){
+  const N=M.n,Y=M[lab].y,NY=N-Y;if(!N)return null;
+  let s=0;
+  for(const k of f){const a=M.all[k],cy=a?a[lab]:0,cn=a?a.n-a[lab]:0;s+=Math.log((cy+1)/(Y+2))-Math.log((cn+1)/(NY+2))}
+  const lo=Math.log((Y+1)/(NY+1))+0.6*s;   // damped: features overlap
+  return 1/(1+Math.exp(-lo));
+}
+function predict(t,a){
+  if(!MODEL||MODEL.n<LEARN_MIN)return null;
+  const f=featuresOf(t,a),pRan=nbProb(MODEL,f,"ran"),pDie=nbProb(MODEL,f,"die");
+  return{pRan,pDie,ev:pRan*0.8-pDie*0.4-Math.max(0,1-pRan-pDie)*0.05};
+}
+function learnInfo(){
+  if(!MODEL||!MODEL.n)return{n:0,min:LEARN_MIN,ready:false};
+  const feats=Object.entries(MODEL.all).filter(([,a])=>a.n>=20).map(([k,a])=>({k,n:a.n,ran:a.ran/a.n,die:a.die/a.n}));
+  return{n:MODEL.n,min:LEARN_MIN,ready:MODEL.n>=LEARN_MIN,base:{ran:MODEL.ran.y/MODEL.n,die:MODEL.die.y/MODEL.n},
+    good:[...feats].sort((x,y)=>(y.ran-y.die)-(x.ran-x.die)).slice(0,6),bad:[...feats].sort((x,y)=>(x.ran-x.die)-(y.ran-y.die)).slice(0,6)};
+}
+const modelN=()=>REMOTE?(remoteInfo?.learn?.n||0):(MODEL?.n||0);
+buildModel();setInterval(()=>{if(!REMOTE)buildModel()},300000);
+
+/* ===================== AUTO-EVOLVE (spawn tweaked copies of the best bot, retire losers) ===================== */
+function mutate(c){
+  const keys=["minScore","minAge","maxAge","minBuyers","minCurve","maxCurve","trail","maxHold","exitScore","minP","minEdge"];
+  const out={...c};
+  for(const k of [...keys].sort(()=>Math.random()-0.5).slice(0,3)){
+    const v=out[k]*(0.8+Math.random()*0.4);out[k]=k==="minP"||k==="minEdge"?+v.toFixed(3):Math.round(v);
+  }
+  out.minCurve=Math.min(out.minCurve,out.maxCurve-5);out.minAge=Math.min(out.minAge,out.maxAge-10);
+  return out;
+}
+function evoNote(s){EVO.log.unshift({ts:Date.now(),s});if(EVO.log.length>30)EVO.log.length=30;log("EVOLVE "+s)}
+function evolve(){
+  if(REMOTE||!EVO.on)return;
+  const exp=b=>grp(b.closed).avg??0,lead=leadBot();
+  for(const b of bots.filter(x=>x.gen))
+    if(b.closed.length>=40&&exp(b)<=0&&b!==lead){bots=bots.filter(x=>x!==b);evoNote(`Retired ${b.name} after ${b.closed.length} trades (avg ${fmt(exp(b),4)} SOL)`)}
+  const parents=bots.filter(b=>b.closed.length>=30&&exp(b)>0).sort((x,y)=>exp(y)-exp(x));
+  if(parents.length&&bots.filter(b=>b.gen).length<3&&bots.length<8){
+    const p=parents[0];EVO.n++;
+    const ch=newBot(`Gen ${EVO.n} ← ${p.name}`.slice(0,30),mutate(p.cfg));ch.gen=EVO.n;ch.parent=p.id;bots.push(ch);
+    evoNote(`Spawned ${ch.name}`);
+  }
+  if(!bots.includes(B)){B=bots[0];selId=B.id}
+  dirty.bot=true;
+}
+setInterval(evolve,600000);
+
+/* ===================== 24/7 SERVER: engine export/commands + remote viewer ===================== */
+function statusSummary(){
+  const ft=followTarget(),L=learnInfo();
+  return{feed:ws?.readyState===1&&Date.now()-lastMsg<30000,tokens:tokens.size,sol:SOL_USD,
+    following:ft?{name:ft.b.name,practice:ft.practice}:null,
+    pos:ft?Object.values(ft.b.pos).map(p=>{const t=tokens.get(p.mint),px=spotOf(t)??p.mark;return{sym:p.sym,x:px/p.entry,mint:p.mint}}):[],
+    race:bots.map(b=>{const rd=readiness(b);return{name:b.name,on:b.on,closed:b.closed.length,ret:retPct(b),checks:rd.checks.filter(c=>c[0]).length,ready:rd.ok,open:Object.keys(b.pos).length}}),
+    learn:{n:L.n||0,min:LEARN_MIN},evo:EVO.log[0]||null};
+}
+function exportState(){
+  const tk=[...tokens.values()].map(t=>({mint:t.mint,name:t.name,symbol:t.symbol,dev:t.dev,created:t.created,live:t.live,devSold:t.devSold,mcSol:t.mcSol,vSol:t.vSol,
+    buys:t.buys,sells:t.sells,graduated:t.graduated,links:t.links||null,scan:t.scan,lastTrade:t.lastTrade,chainOk:!!t.chain,bundleOk:!!(t.bundle&&!t.bundle.partial),
+    smart:[...t.smart],_a:analyze(t)}));
+  const wl={};for(const[w,r]of leaderboard().slice(0,150))wl[w]=r;for(const w of Object.keys(follow))if(wallets[w])wl[w]=wallets[w];
+  const ftE=followTarget();
+  return{v:4,ts:Date.now(),sol:SOL_USD,rpc:rpcCalls,followId:ftE?.b.id||null,followPractice:!!ftE?.practice,feed:ws?.readyState===1&&Date.now()-lastMsg<30000,
+    bots:bots.map(b=>({...b,closed:b.closed.slice(0,300),eqHist:b.eqHist.slice(-400)})),leadSel,evo:EVO,rules,W,T,
+    S:{autoChain:S.autoChain,gateBuyers:S.gateBuyers,gateAge:S.gateAge,autoBundle:S.autoBundle,snipeSlots:S.snipeSlots,snapAge:S.snapAge},
+    tokens:tk,wallets:wl,follow,noFollow,smartLog:smartLog.slice(0,100),wposN:wpos.size,walletsN:Object.keys(wallets).length,learn:learnInfo(),histN:hist.length};
+}
+function applyCmd(c){
+  if(Array.isArray(c.bots))for(const x of c.bots){
+    if(!x||typeof x.id!=="string")continue;
+    let b=bots.find(y=>y.id===x.id);
+    if(!b){b=newBot(x.name,x.cfg,x.on);b.id=x.id;bots.push(b)}
+    else if((x.resetAt||0)>(b.resetAt||0)){const f=newBot(x.name,x.cfg,x.on);f.id=x.id;bots[bots.indexOf(b)]=f;b=f}
+    b.resetAt=Math.max(b.resetAt||0,x.resetAt||0);
+    b.name=String(x.name||b.name).slice(0,30);b.cfg={...BOT_CFG,...x.cfg};
+    if(x.on&&!b.on&&!b.started)b.started=Date.now();b.on=!!x.on;
+  }
+  if(Array.isArray(c.del)&&bots.length-c.del.length>=1)bots=bots.filter(b=>!c.del.includes(b.id));
+  if(c.close){const b=bots.find(y=>y.id===c.close.id),p=b?.pos[c.close.mint];if(p)botSell(b,p,tokens.get(p.mint),1,"manual close")}
+  if(typeof c.leadSel==="string")leadSel=c.leadSel;
+  if(typeof c.evoOn==="boolean")EVO.on=c.evoOn;
+  if(c.rules){rules={...rules,...c.rules};store.set("rules",rules)}
+  if(c.W){W={...W,...c.W};store.set("weights",W)}
+  if(c.T){T={...T,...c.T};store.set("tcfg",T)}
+  if(c.follow){follow=c.follow;noFollow=c.noFollow||noFollow;dirty.follow=true;syncFollowSubs()}
+  if(c.S){for(const k of ["autoChain","gateBuyers","gateAge","autoBundle","snipeSlots","snapAge"])if(k in c.S)S[k]=c.S[k];store.set("settings",{...S,key:ENGINE?"":S.key})}
+  if(c.clearWallets){wallets={};wpos.clear();wposByMint.clear();for(const[w,f]of Object.entries(follow))if(f.auto)delete follow[w];dirty.wallets=true;dirty.follow=true;syncFollowSubs()}
+  if(!bots.includes(B)){B=bots[0];selId=B.id}
+  dirty.bot=true;persist();return true;
+}
+let remoteInfo=null,remoteErr="",localEditAt=0;
+function importState(s){
+  remoteInfo=s;SOL_USD=s.sol||SOL_USD;if(SOL_USD)$("#solPx").textContent="SOL $"+fmt(SOL_USD);rpcCalls=s.rpc||0;
+  if(Date.now()-localEditAt>8000){
+    bots=s.bots;leadSel=s.leadSel;EVO=s.evo||EVO;rules={...rules,...s.rules};W={...W,...s.W};T={...T,...s.T};
+    follow=s.follow||{};noFollow=s.noFollow||{};Object.assign(S,s.S||{});
+    const f=document.activeElement;
+    if(!$("#botCfg").contains(f)&&f?.id!=="botName")buildBotCfg();
+    if(!$("#risk").contains(f))for(const[id,k]of Object.entries(rmap))$("#"+id).value=rules[k];
+    if(!$("#traders").contains(f))buildTraderCfg();
+  }
+  B=bots.find(b=>b.id===selId)||bots[0];selId=B.id;
+  tokens.clear();
+  for(const x of s.tokens||[]){
+    const t=mkToken(x.mint,x);
+    Object.assign(t,{devSold:x.devSold,mcSol:x.mcSol,vSol:x.vSol,buys:x.buys,sells:x.sells,graduated:x.graduated,links:x.links||undefined,scan:x.scan,
+      lastTrade:x.lastTrade,_a:x._a,smart:new Set(x.smart),chain:x.chainOk?{}:null,bundle:x.bundleOk?{partial:false,bundled:[],snipers:[]}:null});
+    tokens.set(t.mint,t);
+  }
+  wallets=s.wallets||{};smartLog.length=0;smartLog.push(...(s.smartLog||[]));
+  const ft=followTarget(),s0=ft?.b.sig?.[0];   // beep/flash on new signals while the app is open
+  if(s0&&s0.ts>lastSigSeen){if(lastSigSeen&&Date.now()-s0.ts<60000){beep(s0.kind||"");flashTitle(`⚡ ${s0.kind||""} ${s0.sym||""}`)}lastSigSeen=s0.ts}
+}
+let lastSigSeen=0;
+function updRemoteStatus(){
+  const ok=!remoteErr&&remoteInfo?.feed;
+  $("#wsDot").classList.toggle("on",!!ok);
+  $("#wsTxt").textContent=remoteErr?"server: "+remoteErr:ok?"server live 24/7":"server: feed reconnecting";
+}
+async function pollRemote(){
+  try{
+    const r=await api("/api/state",{},10000);
+    if(r.status===401){remoteErr="access token missing or wrong (Settings)";return}
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    importState(await r.json());remoteErr="";
+  }catch(e){if(remoteErr!=="access token missing or wrong (Settings)")remoteErr="unreachable"}
+  finally{updRemoteStatus()}
+}
+let histAt=0;
+async function pollHist(){
+  if(Date.now()-histAt<60000)return;histAt=Date.now();
+  try{const r=await api("/api/hist",{},30000);if(r.ok){hist=await r.json();histIdx.clear();hist.forEach(h=>histIdx.add(h.m));rebuildDevDied();renderHist()}}catch{}
+}
+function remoteSync(extra={}){
+  if(!REMOTE)return;localEditAt=Date.now();
+  api("/api/cmd",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({
+    bots:bots.map(b=>({id:b.id,name:b.name,on:b.on,cfg:b.cfg,resetAt:b.resetAt||0})),leadSel,evoOn:EVO.on,rules,W,T,follow,noFollow,...extra})})
+    .then(r=>{if(!r.ok)throw new Error();localEditAt=Date.now()-6000;setTimeout(pollRemote,600)})
+    .catch(()=>{remoteErr="couldn't save to server";updRemoteStatus()});
+}
 
 /* ===================== loop ===================== */
 let lastTab="";
@@ -1687,11 +1913,16 @@ function renderAll(force){
   lastTab=tab;
 }
 function tick(){
-  for(const t of tokens.values())logHistory(t,false);
-  if(ws&&ws.readyState===1&&Date.now()-lastMsg>30000&&!paused&&document.visibilityState==="visible")reconnectNow();
-  autoScan();botTick();renderAll(false);
+  if(!REMOTE){
+    for(const t of tokens.values())logHistory(t,false);
+    if(ws&&ws.readyState===1&&Date.now()-lastMsg>30000&&!paused&&(ENGINE||document.visibilityState==="visible"))reconnectNow();
+    autoScan();botTick();
+  }else $("#botStat").textContent=`${bots.filter(b=>b.on).length} bots on (server)`;
+  if(!ENGINE)renderAll(false);
 }
-buildSettings();buildBotCfg();buildTraderCfg();computeFifo();connect();renderAll(true);setInterval(tick,2000);
+buildSettings();buildBotCfg();buildTraderCfg();computeFifo();
+if(REMOTE){pollRemote();setInterval(pollRemote,3000)}else connect();
+renderAll(true);setInterval(tick,2000);
 </script>
 </body>
 </html>

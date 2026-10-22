@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PumpRadar">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>PumpRadar</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
@@ -68,11 +75,32 @@ canvas{width:100%;height:220px;display:block}
 .wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10.5px;border:1px solid var(--line);color:var(--mute)}
 .tag.auto{color:var(--accent);border-color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
+.card.buy{border-color:var(--good);box-shadow:0 0 0 1px var(--good) inset}.card.sell{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad) inset}
+.card .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.big{font:700 20px var(--sans)}.verdict{font-weight:600;margin:4px 0}.small{font-size:12px}
+.act{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.act .btn{flex:1 1 30%;text-align:center;padding:12px 10px;border-radius:10px;font:600 14px var(--sans);text-decoration:none;display:inline-block}
+a.btn{background:var(--accent);color:#1a1205}a.btn.ghost{background:var(--panel);color:var(--fg);border:1px solid var(--line)}
+.prog{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:6px 0}.prog i{display:block;height:100%;background:var(--accent)}
+#follow{max-width:640px}
+@media (max-width:700px){
+  header{padding:8px 12px calc(8px) 12px;padding-top:max(8px,env(safe-area-inset-top))}
+  h1{font-size:16px}.status{gap:8px;font-size:11px}
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--bg);border-top:1px solid var(--line);border-bottom:0;padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+  nav button{padding:10px 12px;font-size:13px}
+  main{padding:12px 12px 96px}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .two{grid-template-columns:1fr}
+  .kpi b{font-size:16px}
+  input,select{font-size:16px}
+  .bar label{flex:1 1 40%}
+}
 </style>
 </head>
 <body>
 <header>
-  <h1>Pump<span>Radar</span><small>v2.3</small></h1>
+  <h1>Pump<span>Radar</span><small>v3</small></h1>
   <div class="status">
     <span><i class="dot" id="wsDot"></i><span id="wsTxt">feed offline</span></span>
     <span id="solPx">SOL —</span>
@@ -83,11 +111,12 @@ canvas{width:100%;height:220px;display:block}
   </div>
 </header>
 <nav>
-  <button data-tab="scan" class="on">Scanner</button>
+  <button data-tab="follow" class="on">Follow</button>
+  <button data-tab="scan">Scanner</button>
   <button data-tab="check">Pre-trade check</button>
   <button data-tab="watch">Watchlist</button>
   <button data-tab="traders">Top traders</button>
-  <button data-tab="bot">Paper bot</button>
+  <button data-tab="bot">Bots</button>
   <button data-tab="wallet">Wallet P&amp;L</button>
   <button data-tab="risk">Risk rules</button>
   <button data-tab="stats">Stats &amp; journal</button>
@@ -97,7 +126,21 @@ canvas{width:100%;height:220px;display:block}
 <main>
 
 <!-- SCANNER -->
-<section id="scan">
+<!-- FOLLOW -->
+<section id="follow">
+  <div id="fStatus"></div>
+  <div class="act" style="margin:0 0 6px">
+    <button class="btn ghost" id="wakeBtn">Keep screen awake</button>
+    <button class="btn ghost" id="soundBtn">Sound alerts: off</button>
+  </div>
+  <p class="note">Keep this screen open: iPhone pauses the bots when you lock it or switch apps. Tap both buttons above each time you open the app.</p>
+  <h3>Do now</h3><div id="fActions"></div>
+  <h3>Manage open positions</h3><div id="fPos"></div>
+  <h3>Bot race (50 trades + 5 checks = copy-ready)</h3><div id="fRace"></div>
+  <h3>Recent signals</h3><div id="fHist" class="log" style="max-height:220px"></div>
+</section>
+
+<section id="scan" hidden>
   <div class="bar">
     <label>Min score<input id="fScore" type="number" value="0" class="n"></label>
     <label>Max dev %<input id="fDev" type="number" value="100" class="n"></label>
@@ -172,15 +215,12 @@ canvas{width:100%;height:220px;display:block}
 <!-- PAPER BOTS -->
 <section id="bot" hidden>
   <div id="botBanner"></div>
-  <div id="todo"></div>
   <div class="panel">
     <div class="bar">
       <button class="btn" id="botAll">Start all bots</button>
       <button class="btn ghost" id="botAdd">Add bot (clone selected)</button>
       <label>Copy from<select id="botLead"></select></label>
       <button class="btn ghost" id="notifBtn2">Enable desktop alerts</button>
-      <button class="btn ghost" id="soundBtn">Sound alerts: off</button>
-      <button class="btn ghost" id="wakeBtn">Keep screen awake</button>
     </div>
     <div class="tbl"><table>
       <thead><tr><th class="l">Bot</th><th class="l">State</th><th>Equity $</th><th>P&amp;L %</th><th>Closed</th><th>Win %</th><th>Avg SOL</th><th>PF</th><th>Max DD</th><th>Open</th><th class="l">Copy-ready</th><th class="l"></th></tr></thead>
@@ -792,18 +832,21 @@ function autoScan(){
   }
 }
 
+let lastMsg=Date.now();
+function reconnectNow(){const old=ws;ws=null;try{old&&old.close()}catch{}connect()}
 function connect(){
-  ws=new WebSocket("wss://pumpportal.fun/api/data");
-  ws.onopen=()=>{$("#wsDot").classList.add("on");$("#wsTxt").textContent="feed live";
+  if(ws&&(ws.readyState===0||ws.readyState===1))return;
+  const s=new WebSocket("wss://pumpportal.fun/api/data");ws=s;lastMsg=Date.now();
+  s.onopen=()=>{lastMsg=Date.now();$("#wsDot").classList.add("on");$("#wsTxt").textContent="feed live";
     ws.send(JSON.stringify({method:"subscribeNewToken"}));ws.send(JSON.stringify({method:"subscribeMigration"}));
     const keys=[...new Set([...tokens.keys(),...Object.keys(watch),...bots.flatMap(b=>Object.keys(b.pos))])];if(keys.length)subTrades(keys);
     subAcc=new Set();syncFollowSubs()};
-  ws.onmessage=e=>{if(paused)return;let m;try{m=JSON.parse(e.data)}catch{return}
+  s.onmessage=e=>{lastMsg=Date.now();if(paused)return;let m;try{m=JSON.parse(e.data)}catch{return}
     if(m.txType==="create")newToken(m);
     else if(m.txType==="buy"||m.txType==="sell")onTrade(m);
     else if(m.txType==="migrate"||m.txType==="migration"){const t=tokens.get(m.mint);if(t)t.graduated=true}};
-  ws.onclose=()=>{$("#wsDot").classList.remove("on");$("#wsTxt").textContent="reconnecting…";setTimeout(connect,3000)};
-  ws.onerror=()=>ws.close();
+  s.onclose=()=>{if(ws!==s)return;$("#wsDot").classList.remove("on");$("#wsTxt").textContent="reconnecting…";setTimeout(connect,3000)};
+  s.onerror=()=>{try{s.close()}catch{}};
 }
 function subTrades(keys){if(ws?.readyState===1)ws.send(JSON.stringify({method:"subscribeTokenTrade",keys}))}
 $("#pauseBtn").onclick=()=>{paused=!paused;$("#pauseBtn").textContent=paused?"Resume feed":"Pause feed"};
@@ -1159,12 +1202,13 @@ function leadBot(){
 function signal(b,kind,p,extra){
   const usd=SOL_USD?` ($${fmt(extra.sol*SOL_USD)})`:"";
   const text=`${kind} ${p.sym} · ${fmt(extra.sol,3)} SOL${usd} · MC $${fmtK(extra.mcUsd)} · ${extra.why}`;
-  b.sig.unshift({ts:Date.now(),text,mint:p.mint,kind});if(b.sig.length>120)b.sig.length=120;
-  if(leadBot()===b){
-    const ready=readiness(b).ok;
-    notify(`PumpRadar COPY ${kind}${ready?"":" (not copy-ready)"}`,`[${b.name}] ${text}`);
+  b.sig.unshift({ts:Date.now(),text,mint:p.mint,kind,sym:p.sym,mc:extra.mcUsd,why:extra.why});if(b.sig.length>120)b.sig.length=120;
+  const ft=followTarget();
+  if(ft&&ft.b===b){
+    const ready=!ft.practice;
+    notify(`PumpRadar ${ready?"COPY":"PRACTICE"} ${kind}`,`[${b.name}] ${text}`);
     beep(kind);flashTitle(`⚡ ${kind} ${p.sym}`);
-    log(`COPY [${b.name}] ${text}`);
+    log(`${ready?"COPY":"PRACTICE"} [${b.name}] ${text}`);
   }
   dirty.bot=true;
 }
@@ -1284,30 +1328,108 @@ function botEntries(b){
   for(const p of Object.values(b.pos)){const px=spotOf(tokens.get(p.mint))??p.mark;m[p.mint]={t:p.t,entry:p.entry,pnl:p.realized+p.tokens*px-p.cost,sym:p.sym}}
   return m;
 }
-/* "What to do now": plain instructions from the lead bot */
-function renderTodo(){
+/* ===================== FOLLOW (phone-first "what do I do now") ===================== */
+/* Follows the lead bot when one is copy-ready (or picked manually); otherwise the best bot so far, in PRACTICE mode. */
+function followTarget(){
   const lead=leadBot();
-  if(!bots.some(b=>b.on)){$("#todo").innerHTML=`<div class="banner warn">All bots are stopped. Press "Start all bots" and leave this tab open.</div>`;return}
-  if(!lead){
-    const best=bots.filter(b=>b.closed.length).sort((x,y)=>(retPct(y)??-1e9)-(retPct(x)??-1e9))[0];
-    $("#todo").innerHTML=`<div class="banner warn">WHAT TO DO NOW: nothing. No bot has passed the readiness checks yet, so don't deposit or copy.
-      <div style="font-weight:400;margin-top:6px">${best?`Best so far: ${esc(best.name)} · ${best.closed.length} closed · ${fmt(retPct(best),1)}% · PF ${(()=>{const pf=profitFactor(best);return pf==null?"—":pf===Infinity?"∞":pf.toFixed(2)})()}. `:"Bots are collecting trades. "}Check back after each bot has at least 50 closed trades.</div></div>`;
-    return;
-  }
-  const ready=readiness(lead).ok,now=Date.now();
-  const fresh=lead.sig.filter(s=>now-s.ts<180000);
-  const acts=Object.values(lead.pos).map(p=>{
-    const t=tokens.get(p.mint),px=spotOf(t)??p.mark,x=px/p.entry;
-    const tpMc=p.entry*rules.tp*SUPPLY*SOL_USD,slMc=p.entry*(1-rules.sl/100)*SUPPLY*SOL_USD,trail=p.peak*(1-lead.cfg.trail/100)*SUPPLY*SOL_USD;
-    const what=p.tpHit?`HOLD the rest · sell all if MC drops below $${fmtK(trail)}`
-      :`HOLD · sell ${lead.cfg.tpSell}% at MC $${fmtK(tpMc)} (${rules.tp}x) · sell all below MC $${fmtK(slMc)} · exit by ${new Date(p.t+lead.cfg.maxHold*60000).toLocaleTimeString()}`;
-    return `<div>• <b>${esc(p.sym)}</b> now ${x.toFixed(2)}x (MC $${fmtK(px*SUPPLY*SOL_USD)}) → ${what} · <a href="https://pump.fun/coin/${p.mint}" target="_blank" rel="noopener">open</a></div>`}).join("");
-  $("#todo").innerHTML=`<div class="banner ${ready?"ok":"warn"}">WHAT TO DO NOW, following ${esc(lead.name)}${ready?"":" (manually picked, NOT copy-ready: practice size only)"}
-    <div style="font-weight:400;margin-top:8px;line-height:1.7">
-    ${fresh.length?fresh.map(s=>`<div>⚡ ${new Date(s.ts).toLocaleTimeString()} <b>${esc(s.text)}</b> · <a href="https://pump.fun/coin/${s.mint}" target="_blank" rel="noopener">open</a></div>`).join(""):"<div>No new signal in the last 3 minutes. Wait; don't chase.</div>"}
-    ${acts||"<div>• No open positions. Stay flat until the next BUY signal.</div>"}
-    <div class="mute">Size: never more than the SOL in the signal. A signal older than ~30 s is usually already priced in; skip it.</div></div></div>`;
+  if(lead)return{b:lead,practice:!readiness(lead).ok,manual:leadSel!=="auto"};
+  const pool=bots.filter(b=>b.on);if(!pool.length)return null;
+  const best=[...pool].sort((x,y)=>((retPct(y)??0)-(retPct(x)??0))||(y.closed.length-x.closed.length))[0];
+  return{b:best,practice:true,manual:false};
 }
+let ack=new Set(store.get("ack",[]));
+function ackSig(id){ack.add(id);const a=[...ack];if(a.length>500)ack=new Set(a.slice(-300));store.set("ack",[...ack]);renderAll(true)}
+const sigId=s=>s.ts+":"+s.mint;
+let hiddenAt=null,lastPauseMs=0,lastResumeAt=0;
+function yourSize(){
+  const r=riskCheck();
+  if(r.locked)return{usd:0,locked:true};
+  const usd=Math.max(0,Math.min(r.maxUsd,rules.daily-r.dayLoss,r.bankroll-rules.floor));
+  return{usd,sol:SOL_USD?usd/SOL_USD:null,locked:false};
+}
+function renderFollow(){
+  const ft=followTarget(),now=Date.now();
+  const feedOk=ws?.readyState===1&&now-lastMsg<30000;
+  let st=[];
+  if(!S.key)st.push(`<div class="banner bad">Add your Helius key in Settings. Without it the bots can't check tokens and won't trade.</div>`);
+  if(!feedOk)st.push(`<div class="banner warn">Reconnecting to the live feed…</div>`);
+  if(lastPauseMs>60000&&now-lastResumeAt<120000)st.push(`<div class="banner warn">Bots were paused ${dur(lastPauseMs)} while this screen was off. Exits were re-checked on return.</div>`);
+  const sz=yourSize();
+  if(sz.locked)st.push(`<div class="banner bad">STOP: your risk rules locked you out for today. Don't copy anything.</div>`);
+  if(!ft)st.push(`<div class="banner warn">All bots are stopped. Open Bots → Start all bots.</div>`);
+  else st.push(`<div class="banner ${ft.practice?"warn":"ok"}">Following <b>${esc(ft.b.name)}</b> · ${ft.practice
+      ?"PRACTICE: no bot has proven itself yet. Watch the signals; don't use real money."
+      :"COPY-READY: copy these signals with your size below."}</div>`);
+  $("#fStatus").innerHTML=st.join("");
+  if(!ft){$("#fActions").innerHTML="";$("#fPos").innerHTML="";$("#fHist").innerHTML="";renderRace();return}
+  const b=ft.b;
+  /* actions: fresh signals (≤2 min) not yet marked done */
+  const seenM=new Set(),fresh=b.sig.filter(s=>{if(seenM.has(s.mint))return false;seenM.add(s.mint);return now-s.ts<=120000&&!ack.has(sigId(s))});   // latest signal per token only
+  $("#fActions").innerHTML=fresh.map(s=>{
+    const kind=s.kind||s.text.split(" ")[0],buy=kind.startsWith("BUY"),age=(now-s.ts)/1000;
+    const t=tokens.get(s.mint),nowMc=t?.mcSol?t.mcSol*SOL_USD:null,move=s.mc&&nowMc?(nowMc/s.mc-1)*100:null;
+    const late=age>30,ran=buy&&move!=null&&move>15;
+    const verdict=buy?(sz.locked?"Locked out: skip":ran?`Skip: price already ran +${move.toFixed(0)}%`:late?"Late: buy only if price is near the signal MC":"BUY NOW")
+      :kind==="SELL ALL"?"SELL ALL of it":`${kind.replace("SELL","SELL")} of your position`;
+    const size=buy?(ft.practice?`Practice only: $0 real`:`Your size: <b>$${fmt(sz.usd)}</b>${sz.sol?` (${fmt(sz.sol,3)} SOL)`:""}`):"";
+    return `<div class="card ${buy?"buy":"sell"}">
+      <div class="row"><span class="big ${buy?"pos":"neg"}">${esc(kind)} ${esc(s.sym||"")}</span><span class="mute">${age.toFixed(0)}s ago</span></div>
+      <div class="verdict">${esc(verdict)}</div>
+      <div class="mute">${size}${size?" · ":""}Signal MC $${fmtK(s.mc)}${nowMc?` · now $${fmtK(nowMc)}${move!=null?` (${move>0?"+":""}${move.toFixed(0)}%)`:""}`:""}</div>
+      <div class="mute small">${esc(s.why||s.text)}</div>
+      <div class="act"><a class="btn" href="https://pump.fun/coin/${s.mint}" target="_blank" rel="noopener">Open in pump.fun</a>
+        <button class="btn ghost" data-copy="${s.mint}">Copy mint</button><button class="btn ghost" data-ack="${esc(sigId(s))}">Done</button></div></div>`}).join("")
+    ||`<div class="card"><div class="big mute">WAIT</div><div>No signal right now. Keep this screen open; a beep means act.</div>
+       <div class="mute small">The bots scan every new launch and only signal when one passes ${esc(b.name)}'s filters. Quiet stretches of 10–30 min are normal.</div></div>`;
+  /* positions to manage */
+  $("#fPos").innerHTML=Object.values(b.pos).map(p=>{
+    const t=tokens.get(p.mint),px=spotOf(t)??p.mark,x=px/p.entry;
+    const tpMc=p.entry*rules.tp*SUPPLY*SOL_USD,slMc=p.entry*(1-rules.sl/100)*SUPPLY*SOL_USD,trail=p.peak*(1-b.cfg.trail/100)*SUPPLY*SOL_USD;
+    const plan=p.tpHit?`Holding the rest. Sell all if MC drops below $${fmtK(trail)}.`
+      :`Sell ${b.cfg.tpSell}% at MC $${fmtK(tpMc)} (${rules.tp}x). Sell all below $${fmtK(slMc)}. Exit by ${new Date(p.t+b.cfg.maxHold*60000).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}.`;
+    return `<div class="card"><div class="row"><span class="big">${esc(p.sym)}</span><span class="big ${cls(x-1)}">${x.toFixed(2)}x</span></div>
+      <div>Now MC $${fmtK(px*SUPPLY*SOL_USD)} · entry $${fmtK(p.entry*SUPPLY*SOL_USD)} · held ${ago(p.t)}</div>
+      <div class="verdict">HOLD · ${esc(plan)}</div>
+      <div class="act"><a class="btn ghost" href="https://pump.fun/coin/${p.mint}" target="_blank" rel="noopener">Open</a><button class="btn ghost" data-copy="${p.mint}">Copy mint</button></div></div>`}).join("")
+    ||`<div class="card mute">No open positions. Nothing to manage.</div>`;
+  $("#fHist").innerHTML=b.sig.slice(0,25).map(s=>`<div>${new Date(s.ts).toLocaleTimeString()}  ${esc(s.text)}</div>`).join("")||"No signals yet.";
+  renderRace();
+}
+function renderRace(){
+  const ft=followTarget();
+  $("#fRace").innerHTML=bots.map(b=>{
+    const rd=readiness(b),passed=rd.checks.filter(c=>c[0]).length,r=retPct(b),pct=Math.min(100,b.closed.length/50*100);
+    return `<div class="card"><div class="row"><span><b>${esc(b.name)}</b>${ft?.b===b?` <span class="tag auto">following</span>`:""}</span>
+      <span class="${cls(r)}">${r==null?"—":(r>0?"+":"")+fmt(r,1)+"%"}</span></div>
+      <div class="prog"><i style="width:${pct}%"></i></div>
+      <div class="mute small">${b.closed.length}/50 trades · ${passed}/5 checks${rd.ok?" · ✓ copy-ready":""} · ${Object.keys(b.pos).length} open · ${b.on?(b.locked?"locked":"running"):"stopped"}</div></div>`}).join("");
+}
+/* re-mark open positions from DexScreener (after the phone was asleep, or for tokens that went quiet) */
+async function refreshMarks(){
+  const now=Date.now();
+  const ms=[...new Set(bots.flatMap(b=>Object.keys(b.pos)))].filter(m=>{const t=tokens.get(m);return !t||now-t.lastTrade>60000});
+  if(!ms.length)return;
+  const pairs=await dexPairs(ms);
+  for(const m of ms){
+    const p=pairs[m];if(!p)continue;let px=null;
+    if(p.quoteToken?.address===WSOL&&+p.priceNative)px=+p.priceNative;else if(+p.priceUsd&&SOL_USD)px=+p.priceUsd/SOL_USD;
+    if(!px)continue;
+    const t=tokens.get(m);if(t)t.mcSol=px*SUPPLY;
+    for(const b of bots){const q=b.pos[m];if(q){q.mark=px;q.peak=Math.max(q.peak,px)}}
+  }
+}
+setInterval(()=>refreshMarks().catch(()=>{}),60000);
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="hidden"){hiddenAt=Date.now();persist();return}
+  if(hiddenAt){lastPauseMs=Date.now()-hiddenAt;lastResumeAt=Date.now();hiddenAt=null}
+  if(!ws||ws.readyState!==1||Date.now()-lastMsg>10000)reconnectNow();
+  refreshMarks().catch(()=>{}).finally(()=>{botTick();renderAll(true)});
+});
+addEventListener("pagehide",persist);
+document.addEventListener("click",e=>{
+  const c=e.target.closest("[data-copy]");if(c){navigator.clipboard?.writeText(c.dataset.copy).then(()=>{c.textContent="Copied ✓"},()=>{c.textContent="Copy failed"});return}
+  const a=e.target.closest("[data-ack]");if(a)ackSig(a.dataset.ack);
+});
 function renderBotAnalysis(){
   const rd=readiness(B);
   $("#botReady").innerHTML=`<div class="banner ${rd.ok?"ok":"warn"}">${rd.ok
@@ -1350,7 +1472,6 @@ function renderBot(){
   else if(!SOL_USD)banner=`<div class="banner warn">Waiting for SOL price…</div>`;
   else if(typeof Notification!=="undefined"&&Notification.permission!=="granted")banner=`<div class="banner warn">Desktop alerts are off. Enable them so COPY signals reach you when this tab is in the background.</div>`;
   $("#botBanner").innerHTML=banner;
-  renderTodo();
   const sel=$("#botLead");
   if(document.activeElement!==sel)sel.innerHTML=`<option value="auto">Auto (best copy-ready bot)</option>`+bots.map(b=>`<option value="${b.id}">${esc(b.name)} (manual)</option>`).join("");
   sel.value=bots.some(b=>b.id===leadSel)?leadSel:"auto";
@@ -1559,7 +1680,7 @@ function renderAll(force){
   $("#tokCount").textContent=tokens.size+" tokens";$("#rpcStat").textContent="RPC "+rpcCalls+(queue.length?" (+"+queue.length+" queued)":"");
   $("#follStat").textContent=Object.keys(follow).length+" followed";
   if(tab==="scan")renderScan();if(tab==="watch")renderWatch();if(tab==="wallet")renderWallet();
-  if(tab==="risk")renderRisk();if(tab==="stats")renderStats();if(tab==="bot")renderBot();
+  if(tab==="follow")renderFollow();if(tab==="risk")renderRisk();if(tab==="stats")renderStats();if(tab==="bot")renderBot();
   if(tab==="traders"&&(force||tab!==lastTab||Date.now()%6000<2100))renderTraders();
   if(tab==="hist"&&(force||tab!==lastTab||Date.now()%10000<2100))renderHist();
   if(tab==="check"&&force&&!checking)renderCheck();
@@ -1567,6 +1688,7 @@ function renderAll(force){
 }
 function tick(){
   for(const t of tokens.values())logHistory(t,false);
+  if(ws&&ws.readyState===1&&Date.now()-lastMsg>30000&&!paused&&document.visibilityState==="visible")reconnectNow();
   autoScan();botTick();renderAll(false);
 }
 buildSettings();buildBotCfg();buildTraderCfg();computeFifo();connect();renderAll(true);setInterval(tick,2000);

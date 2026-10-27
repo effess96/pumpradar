@@ -1366,8 +1366,12 @@ function botEntries(b){
 }
 /* ===================== FOLLOW (phone-first "what do I do now") ===================== */
 /* Follows the lead bot when one is copy-ready (or picked manually); otherwise the best bot so far, in PRACTICE mode. */
+/* PAPER_ONLY: House Agents Phase 1–3 lock. While true, every signal is PRACTICE with $0 real size, even from a copy-ready bot.
+   Set to false only when Basha deliberately starts Phase 4 (and the server's PAPER_ONLY variable must also be 0). */
+const PAPER_ONLY=true;
 let practiceId=null;
-function followTarget(){
+function followTarget(){const ft=followTargetRaw();return ft&&PAPER_ONLY?{...ft,practice:true}:ft}
+function followTargetRaw(){
   if(REMOTE&&remoteInfo?.followId){const b=bots.find(x=>x.id===remoteInfo.followId);if(b)return{b,practice:!!remoteInfo.followPractice,manual:leadSel!=="auto"}}
   const lead=leadBot();
   if(lead)return{b:lead,practice:!readiness(lead).ok,manual:leadSel!=="auto"};
@@ -1401,7 +1405,8 @@ function renderFollow(){
   if(sz.locked)st.push(`<div class="banner bad">STOP: your risk rules locked you out for today. Don't copy anything.</div>`);
   if(!ft)st.push(`<div class="banner warn">All bots are stopped. Open Bots → Start all bots.</div>`);
   else st.push(`<div class="banner ${ft.practice?"warn":"ok"}">Following <b>${esc(ft.b.name)}</b> · ${ft.practice
-      ?"PRACTICE: no bot has proven itself yet. Watch the signals; don't use real money."
+      ?(PAPER_ONLY?"PAPER ONLY: log these on paper. Real money stays off until Phase 4."
+        :"PRACTICE: no bot has proven itself yet. Watch the signals; don't use real money.")
       :"COPY-READY: copy these signals with your size below."}</div>`);
   $("#fStatus").innerHTML=st.join("");
   if(!ft){$("#fActions").innerHTML="";$("#fPos").innerHTML="";$("#fHist").innerHTML="";renderRace();return}
@@ -1414,10 +1419,11 @@ function renderFollow(){
     const late=age>30,ran=buy&&move!=null&&move>15;
     const verdict=buy?(sz.locked?"Locked out: skip":ran?`Skip: price already ran +${move.toFixed(0)}%`:late?"Late: buy only if price is near the signal MC":"BUY NOW")
       :kind==="SELL ALL"?"SELL ALL of it":`${kind.replace("SELL","SELL")} of your position`;
+    const verdictShown=buy&&ft.practice?(verdict==="BUY NOW"?"PRACTICE BUY: log it on paper only":"PAPER · "+verdict):verdict;
     const size=buy?(ft.practice?`Practice only: $0 real`:`Your size: <b>$${fmt(sz.usd)}</b>${sz.sol?` (${fmt(sz.sol,3)} SOL)`:""}`):"";
     return `<div class="card ${buy?"buy":"sell"}">
       <div class="row"><span class="big ${buy?"pos":"neg"}">${esc(kind)} ${esc(s.sym||"")}</span><span class="mute">${age.toFixed(0)}s ago</span></div>
-      <div class="verdict">${esc(verdict)}</div>
+      <div class="verdict">${esc(verdictShown)}</div>
       <div class="mute">${size}${size?" · ":""}Signal MC $${fmtK(s.mc)}${nowMc?` · now $${fmtK(nowMc)}${move!=null?` (${move>0?"+":""}${move.toFixed(0)}%)`:""}`:""}</div>
       <div class="mute small">${esc(s.why||s.text)}</div>
       <div class="act"><a class="btn" href="https://pump.fun/coin/${s.mint}" target="_blank" rel="noopener">Open in pump.fun</a>

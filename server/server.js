@@ -15,6 +15,7 @@ const DATA = process.env.DATA_DIR || "/data";
 const TG = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
 const TG_PRACTICE = (process.env.TELEGRAM_PRACTICE || "1") !== "0";
 const TZ = process.env.REPORT_TZ || "Asia/Amman";
+const PAPER_ONLY = (process.env.PAPER_ONLY || "1") !== "0";   // belt and braces: forces PRACTICE on every Telegram alert
 const PUB = path.join(__dirname, "public");
 
 if (TOKEN.length < 12) { console.error("Set DASH_TOKEN to a random string of 12+ characters."); process.exit(1); }
@@ -139,6 +140,7 @@ const h = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt
 const K = n => n == null || isNaN(n) ? "—" : n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "k" : (+n).toFixed(0);
 async function onSignal(p) {
   if (!TG || !tgState.chat) return;
+  if (PAPER_ONLY) p.practice = true;
   if (p.practice && !TG_PRACTICE) return;
   const buy = String(p.kind).startsWith("BUY");
   const head = `${buy ? "🟢" : "🔴"} <b>${h(p.kind)} ${h(p.sym)}</b> · ${p.practice ? "🟡 PRACTICE (paper only)" : "COPY"}`;
@@ -153,6 +155,7 @@ async function onSignal(p) {
 }
 async function statusText() {
   const s = await ev(() => statusSummary());
+  if (PAPER_ONLY && s.following) s.following.practice = true;
   const L = [`<b>PumpRadar</b> · feed ${s.feed ? "live ✅" : "down ⚠️"} · ${s.tokens} tokens tracked`];
   L.push(s.following ? `Following <b>${h(s.following.name)}</b> · ${s.following.practice ? "🟡 PRACTICE (don't use real money)" : "🟢 COPY-READY"}` : "All bots are stopped.");
   if (s.pos.length) L.push("Open: " + s.pos.map(p => `${h(p.sym)} ${p.x.toFixed(2)}x`).join(", "));

@@ -31,4 +31,13 @@ Optional variables: `TELEGRAM_PRACTICE=0` to stop practice-signal messages, `TEL
 - **Learner bot:** learns from every token's real 1-hour outcome which features predict 2x runs and rugs (naive Bayes over flags, buyers, curve, sell pressure, velocity, smart wallets), and trades only when the odds favour it. It starts after 150 resolved outcomes.
 - **Auto-evolve:** spawns tweaked copies of the best bot once it has 30 profitable trades and retires copies that lose money after 40.
 
+## v5 Quant Lab (Lab tab)
+Ideas ported from open-source trading frameworks and re-implemented here; no code from those repos is copied or run.
+- **Metrics (freqtrade, nautilus):** SQN, Sharpe, Sortino, Calmar, payoff, ¼-Kelly, loss streak per bot, on return-on-cost after fees and slippage.
+- **Protections (freqtrade):** paper bots pause entries after 4 stop-outs in 3 h or a 25% realized drawdown in 24 h. For real money, a tilt guard (2 losing sells in 3 h, or 3 in a row) shows on the Lab, Risk and signal gate as a **warning**; set `PROT.realBlock=true` to make it a hard block.
+- **Triple barrier + ROI table (hummingbot, freqtrade):** new per-bot knobs `Arm trail at x` and `ROI exit after min / if at least x` (0 = off). Auto-evolve now explores them and ranks parents by SQN minus drawdown instead of raw P&L.
+- **Self-research:** replays the score history through a cost model, grid-searches entry filters on the older 70%, and keeps only those that also hold on the newest 30%. Filters that hold seed a paper bot named `Research N`. Runs automatically as outcomes accumulate, or press **Run research now**.
+- **Regime:** compares the last 50 resolved launches with the baseline (hot / normal / cold) and warns on cold.
+- **Plumbing (ccxt, gocryptotrader):** DexScreener capped at 200 calls/min, WebSocket reconnect with exponential backoff and jitter.
+
 Data: PumpPortal WebSocket, DexScreener, Helius RPC (read-only methods only), Jupiter quotes.

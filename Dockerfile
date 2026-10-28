@@ -4,7 +4,7 @@ ENV NODE_ENV=production DATA_DIR=/data PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 WORKDIR /app
 COPY server/package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
-COPY server/server.js ./
+COPY server/server.js server/trader.js ./
 COPY index.html manifest.json icon-192.png icon-512.png ./public/
 EXPOSE 8080
 CMD ["node", "server.js"]

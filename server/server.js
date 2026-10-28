@@ -17,6 +17,7 @@ const TG_PRACTICE = (process.env.TELEGRAM_PRACTICE || "1") !== "0";
 const TZ = process.env.REPORT_TZ || "Asia/Amman";
 const PAPER_ONLY = (process.env.PAPER_ONLY || "1") !== "0";   // belt and braces: forces PRACTICE on every Telegram alert
 const PUB = path.join(__dirname, "public");
+const { makeTrader } = require("./trader");
 
 if (TOKEN.length < 12) { console.error("Set DASH_TOKEN to a random string of 12+ characters."); process.exit(1); }
 if (!KEY) console.warn("HELIUS_KEY is not set: bots that require on-chain scans won't trade.");
@@ -138,7 +139,12 @@ async function tg(method, params) {
 }
 const h = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 const K = n => n == null || isNaN(n) ? "—" : n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "k" : (+n).toFixed(0);
+let trader = null;   // created after tg() exists (see below)
 async function onSignal(p) {
+  if (trader && trader.enabled()) {          // auto-trader acts on the raw signal (its own gate + hard limits), independent of Telegram
+    const buy0 = String(p.kind).startsWith("BUY");
+    (buy0 ? trader.onBuySignal(p) : trader.onSellSignal(p)).catch(e => console.error("trader:", e.message));
+  }
   if (!TG || !tgState.chat) return;
   if (PAPER_ONLY) p.practice = true;
   if (p.practice && !TG_PRACTICE) return;
@@ -156,6 +162,8 @@ async function onSignal(p) {
     text: `${head}\n${act}\nMC $${K(p.mc)} · ${h(p.why)}\nBot: ${h(p.bot)}${plan}`,
     reply_markup: { inline_keyboard: [[{ text: "Open in pump.fun", url: `https://pump.fun/coin/${p.mint}` }]] } });
 }
+trader = makeTrader({ dataDir: DATA, heliusKey: KEY, tz: TZ,
+  notify: t => (TG && tgState.chat ? tg("sendMessage", { chat_id: tgState.chat, text: t, parse_mode: "HTML", disable_web_page_preview: true }).catch(() => {}) : null) });
 async function statusText() {
   const s = await ev(() => statusSummary());
   if (PAPER_ONLY && s.following) s.following.practice = true;
@@ -183,7 +191,10 @@ async function tgLoop() {
           await tg("sendMessage", { chat_id: chat, text: "✅ PumpRadar linked to this chat. BUY/SELL signals will arrive here. Send /status any time." });
         } else if (chat !== String(tgState.chat)) continue;              // only the owner's chat
         else if (txt.startsWith("/status")) await tg("sendMessage", { chat_id: chat, text: await statusText().catch(e => "Engine: " + e.message), parse_mode: "HTML" });
-        else await tg("sendMessage", { chat_id: chat, text: "Commands: /status" });
+        else {
+          const tr = trader ? await trader.command(txt).catch(e => "Trader: " + e.message) : null;
+          await tg("sendMessage", { chat_id: chat, text: tr || "Commands: /status /trader /stop /resume /sellall", parse_mode: "HTML", disable_web_page_preview: true });
+        }
       }
       saveTg();
     } catch { await sleep(5000); }

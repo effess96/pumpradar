@@ -97,11 +97,80 @@ a.btn{background:var(--accent);color:#1a1205}a.btn.ghost{background:var(--panel)
   input,select{font-size:16px}
   .bar label{flex:1 1 40%}
 }
+/* ===== v6 look: refreshed palette, glass header, icon tab bar, dashboard, charts ===== */
+:root{
+  --bg:#0a0e14; --panel:#121a25; --panel2:#182231; --line:#223044; --fg:#e8eef7; --mute:#8b9bb0;
+  --accent:#f5b041; --good:#34d399; --warn:#fbbf24; --bad:#f87171; --blue:#60a5fa; --violet:#a78bfa; --teal:#2dd4bf; --r:14px;
+}
+body{background:radial-gradient(900px 420px at 85% -120px,rgba(245,176,65,.10),transparent 65%),radial-gradient(700px 380px at -10% 0,rgba(96,165,250,.07),transparent 60%),var(--bg);background-attachment:fixed;-webkit-font-smoothing:antialiased}
+header{background:rgba(10,14,20,.82);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+h1{font-size:19px;font-weight:700}
+h3{font-size:15px;font-weight:600;margin:20px 0 8px}
+.status>span{background:var(--panel);border:1px solid var(--line);padding:3px 9px;border-radius:999px}
+.panel,.kpi,.card,.tbl{border-radius:var(--r)}
+.panel,.kpi,.card{box-shadow:0 1px 0 rgba(255,255,255,.035) inset,0 10px 28px rgba(0,0,0,.28)}
+.kpi{background:linear-gradient(180deg,var(--panel2),var(--panel))}
+.kpi b{font-size:20px;margin-top:2px}
+button.btn{background:linear-gradient(180deg,#f8bf55,#e89a1c);box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 4px 14px rgba(232,154,28,.25);transition:transform .08s,filter .15s}
+button.btn:hover{filter:brightness(1.06)}button.btn:active{transform:translateY(1px)}
+button.ghost{background:var(--panel2);box-shadow:none}
+tr:hover td{background:rgba(255,255,255,.025)}
+th{background:var(--panel2)}
+.banner{border-radius:var(--r);font-weight:600;line-height:1.4}
+nav{gap:6px;position:relative}
+nav button{border-radius:999px;transition:background .15s,color .15s}
+nav button:hover{color:var(--fg)}
+nav button.on{background:linear-gradient(180deg,#223149,#1a2536);color:#fff;box-shadow:0 0 0 1px var(--line) inset}
+nav .ico{display:inline-block;width:16px;height:16px;vertical-align:-3px;margin-right:6px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+nav .lbl{display:inline}
+.morebtn{display:none}.sheet{display:contents}
+/* dashboard */
+.hero{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-radius:18px;padding:18px 18px;margin-bottom:14px;border:1px solid var(--line);background:linear-gradient(135deg,rgba(245,176,65,.10),rgba(96,165,250,.05) 60%,transparent),var(--panel)}
+.hero .big{font:700 21px/1.25 var(--sans);letter-spacing:-.01em}.hero p{margin:6px 0 0;color:var(--mute);max-width:60ch}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font:600 12px var(--sans);border:1px solid var(--line);background:var(--panel2);color:var(--fg)}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--mute)}
+.chip.ok i{background:var(--good)}.chip.warn i{background:var(--warn)}.chip.bad i{background:var(--bad)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.tile{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;min-width:0}
+.tile small{display:block;color:var(--mute);font-size:11px;text-transform:uppercase;letter-spacing:.07em}
+.tile b{display:block;font:700 22px var(--mono);margin:3px 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile span{color:var(--mute);font-size:12px}
+.cc{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 10px;min-width:0;box-shadow:0 10px 28px rgba(0,0,0,.22)}
+.cc h4{margin:0;font:600 14px var(--sans)}.cc .sub{color:var(--mute);font-size:12px;margin:2px 0 8px}
+.cc svg text.ax{fill:var(--mute);font:10.5px var(--mono)}.cc svg text.val{fill:var(--fg);font:600 10.5px var(--mono)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--mute)}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.empty{color:var(--mute);font-size:13px;padding:34px 8px;text-align:center;border:1px dashed var(--line);border-radius:10px}
+.hb{display:grid;grid-template-columns:minmax(80px,32%) 1fr 64px;gap:10px;align-items:center;margin:9px 0;font-size:13px}
+.hb .hl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hb b{font:600 12.5px var(--mono);text-align:right}
+.hbar{position:relative;height:10px;background:var(--line);border-radius:6px}.hbar:after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--mute);opacity:.5}
+.hbar i{position:absolute;top:0;bottom:0;border-radius:6px}
+.hsub{grid-column:2/4;margin-top:-6px;color:var(--mute);font-size:11px}
+.health{display:grid;gap:8px}.hrow{display:grid;grid-template-columns:14px 1fr;gap:10px;align-items:start;font-size:13px}
+.hrow i{width:10px;height:10px;border-radius:50%;margin-top:5px;background:var(--mute)}.hrow.ok i{background:var(--good)}.hrow.warn i{background:var(--warn)}.hrow.bad i{background:var(--bad)}
+.hrow small{display:block;color:var(--mute);font-size:12px}
+details.help{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;margin:14px 0;color:var(--mute);font-size:13px}
+details.help summary{cursor:pointer;color:var(--fg);font-weight:600}
+@media (max-width:700px){
+  header{backdrop-filter:blur(14px)}
+  #rpcStat,#follStat{display:none}
+  nav{display:grid;grid-template-columns:repeat(6,1fr);gap:0;padding:6px 6px calc(6px + env(safe-area-inset-bottom));background:rgba(10,14,20,.92);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);overflow:visible}
+  nav>button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px;border-radius:12px;font-size:10.5px;font-weight:600;white-space:nowrap}
+  nav>button .ico{width:22px;height:22px;margin:0}
+  nav .morebtn{display:flex}
+  .sheet{display:none;position:absolute;left:8px;right:8px;bottom:calc(100% + 8px);background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:8px;grid-template-columns:repeat(2,1fr);gap:6px;box-shadow:0 18px 50px rgba(0,0,0,.6)}
+  nav.open .sheet{display:grid}
+  .sheet button{padding:12px;text-align:left;border:1px solid var(--line);background:var(--panel);font-size:14px;color:var(--fg)}
+  .sheet button.on{border-color:var(--accent)}
+  nav .morebtn.hl{color:var(--accent)}
+  .hero .big{font-size:18px}
+  .tile b{font-size:18px}
+}
 </style>
 </head>
 <body>
 <header>
-  <h1>Pump<span>Radar</span><small>v5</small></h1>
+  <h1>Pump<span>Radar</span><small>v6</small></h1>
   <div class="status">
     <span><i class="dot" id="wsDot"></i><span id="wsTxt">feed offline</span></span>
     <span id="solPx">SOL —</span>
@@ -111,25 +180,50 @@ a.btn{background:var(--accent);color:#1a1205}a.btn.ghost{background:var(--panel)
     <span id="botStat">bot off</span>
   </div>
 </header>
-<nav>
-  <button data-tab="follow" class="on">Follow</button>
-  <button data-tab="scan">Scanner</button>
-  <button data-tab="check">Pre-trade check</button>
-  <button data-tab="watch">Watchlist</button>
-  <button data-tab="traders">Top traders</button>
-  <button data-tab="bot">Bots</button>
-  <button data-tab="lab">Lab</button>
-  <button data-tab="wallet">Wallet P&amp;L</button>
-  <button data-tab="risk">Risk rules</button>
-  <button data-tab="stats">Stats &amp; journal</button>
-  <button data-tab="hist">Score history</button>
-  <button data-tab="set">Settings</button>
+<nav id="mainNav">
+  <button data-tab="home" class="on"><svg class="ico" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span class="lbl">Home</span></button>
+  <button data-tab="follow"><svg class="ico" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span class="lbl">Follow</span></button>
+  <button data-tab="scan"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12L19 5"/></svg><span class="lbl">Scanner</span></button>
+  <button data-tab="bot"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg><span class="lbl">Bots</span></button>
+  <button data-tab="lab"><svg class="ico" viewBox="0 0 24 24"><path d="M9 3h6"/><path d="M10 3v6L4 20h16l-6-11V3"/></svg><span class="lbl">Lab</span></button>
+  <button type="button" class="morebtn" id="moreBtn"><svg class="ico" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><span class="lbl">More</span></button>
+  <div class="sheet">
+    <button data-tab="check"><span class="lbl">Check a token</span></button>
+    <button data-tab="watch"><span class="lbl">Watchlist</span></button>
+    <button data-tab="traders"><span class="lbl">Smart wallets</span></button>
+    <button data-tab="wallet"><span class="lbl">My wallet P&amp;L</span></button>
+    <button data-tab="risk"><span class="lbl">Rules &amp; limits</span></button>
+    <button data-tab="stats"><span class="lbl">Journal</span></button>
+    <button data-tab="hist"><span class="lbl">Launch history</span></button>
+    <button data-tab="set"><span class="lbl">Settings</span></button>
+  </div>
 </nav>
 <main>
 
 <!-- SCANNER -->
+<!-- HOME -->
+<section id="home">
+  <div id="homeHero"></div>
+  <div class="tiles" id="homeTiles"></div>
+  <div class="two">
+    <div class="cc"><h4>Paper bots: return since start</h4><div class="sub">Each line is one practice bot trading fake money. Up is good.</div><div id="homeEq"></div></div>
+    <div class="cc"><h4>Bot scoreboard</h4><div class="sub">Average result per trade, after fees and slippage. A bot needs 50 trades and 5 checks before you copy it.</div><div id="homeBots"></div></div>
+  </div>
+  <div class="two" style="margin-top:14px">
+    <div class="cc"><h4>What happens to new launches (1 hour later)</h4><div class="sub">Share of all tracked launches by how their market cap moved. Most die.</div><div id="homeOut"></div></div>
+    <div class="cc"><h4>Does the safety score predict anything?</h4><div class="sub">If the green bar (ran 2x) doesn't rise with the score, the score isn't giving an edge.</div><div id="homeScore"></div></div>
+  </div>
+  <div class="two" style="margin-top:14px">
+    <div class="cc"><h4>Market mood over time</h4><div class="sub">Rolling share of the last 60 launches that ran 2x or died. Drops in green and spikes in red mean a cold market.</div><div id="homeRoll"></div></div>
+    <div class="cc"><h4>System check</h4><div class="sub">Green is good. Yellow needs a look.</div><div class="health" id="homeHealth"></div></div>
+  </div>
+  <details class="help"><summary>How to read this app</summary>
+    <p><b>Home</b> is the summary. <b>Follow</b> tells you what to do right now (BUY / SELL / WAIT). <b>Bots</b> are practice traders; they use fake money so you can see what works before risking yours. <b>Lab</b> tests ideas on past launches and tells you honestly if they would have made money.</p>
+    <p>Your real-money rules (Phase 4: $5 per trade, stop at -35%, take half off at 2x, hard stop at $10) can't be loosened from the screen. Nothing here trades for you.</p>
+  </details>
+</section>
 <!-- FOLLOW -->
-<section id="follow">
+<section id="follow" hidden>
   <div id="fStatus"></div>
   <div class="act" style="margin:0 0 6px" id="fPhone">
     <button class="btn ghost" id="wakeBtn">Keep screen awake</button>
@@ -358,10 +452,27 @@ a.btn{background:var(--accent);color:#1a1205}a.btn.ghost{background:var(--panel)
     <tbody id="labRes"></tbody></table></div>
   <p class="note">Each logged launch is entered at the snapshot and valued 1 h later, with your fees, slippage and the 2x half-sale. The main columns assume no stop-loss fill (rugs gap through stops), the ceiling column assumes stops always fill, so the truth sits between them. Filters are ranked on the older 70% only, and "holds" means they were also profitable on the newest 30% they never saw. Passing filters seed a paper bot named Research; nothing here changes your real-money rules.</p>
   <p class="note">Ported ideas (re-implemented, no repo code run): freqtrade protections, SQN/Sharpe/Sortino/Calmar and out-of-sample hyperopt; hummingbot triple barrier; ccxt/gocryptotrader rate limiting and reconnect backoff; nautilus-style replay with a cost model.</p>
+  <h3>Learner test (walk-forward, no look-ahead)</h3>
+  <p class="note">The Learner replays every past launch in order, only using outcomes that were already known at that moment, and decides whether it would have bought. The bars show return per trade on the newest 40% of decisions, which the thresholds never saw. Green and positive is what you want.</p>
+  <div class="cc" style="margin-bottom:12px"><h4>Return per trade on unseen launches</h4><div class="sub">Includes fees and slippage, no stop-loss fill assumed.</div><div id="labChart"></div></div>
+  <div class="tbl"><table>
+    <thead><tr><th class="l">Learner thresholds</th><th class="l">Train (older 60%)</th><th class="l">Test (newest 40%)</th><th class="l">Ceiling</th><th>Holds?</th></tr></thead>
+    <tbody id="labTune"></tbody></table></div>
+  <p class="note">A "holds" row is also profitable on the unseen part. The server then spawns a paper bot named Tuned with those thresholds. Nothing here changes real-money rules.</p>
 </section>
 
 <!-- SETTINGS -->
 <section id="set" hidden>
+  <div class="panel" id="setupSafe">
+    <b>Your setup is protected</b>
+    <p class="note" id="bkStat" style="margin:6px 0 10px">Checking…</p>
+    <div class="bar" style="margin-bottom:6px">
+      <button class="btn ghost" id="bkLink">Copy setup link</button>
+      <button class="btn ghost" id="bkDl">Download backup</button>
+      <label style="flex:0 0 auto">Restore from file<input type="file" id="bkFile" accept="application/json,.json"></label>
+    </div>
+    <p class="note">Settings are saved on this device and mirrored to an automatic backup here. If your browser ever wipes them, open the setup link once and the server URL and token come back. The link contains your token, so keep it private (a note to yourself is fine).</p>
+  </div>
   <div class="panel">
     <div class="bar">
       <label style="flex:1 1 280px">Helius API key (stored in this browser only)<input id="sKey" type="password" placeholder="free at helius.dev"></label>
@@ -425,6 +536,16 @@ const BAD_EXT=["permanentDelegate","transferHook","transferFeeConfig","nonTransf
 const SUS_WORDS=["rug","scam","ponzi","honeypot","test","fake","drain","exit"];
 
 /* ===================== settings / weights / rules ===================== */
+/* ---- v6 settings safety net: nothing here renames or moves any stored key ---- */
+(()=>{try{
+  if(/[?&]engine=1/.test(location.search))return;
+  const m=location.hash.match(/^#setup=([A-Za-z0-9_\-]+)/);
+  if(m){const j=JSON.parse(atob(m[1].replace(/-/g,"+").replace(/_/g,"/")));
+    if(j&&typeof j==="object"){const cur=store.get("settings",{})||{};store.set("settings",{...cur,server:String(j.server||"").trim(),token:String(j.token||"").trim()})}
+    try{history.replaceState(null,"",location.pathname+location.search)}catch{}}
+  const cur=store.get("settings",null),bk=store.get("backup",null);
+  if((!cur||(!cur.server&&!cur.token&&!cur.key))&&bk&&bk.S&&(bk.S.server||bk.S.token||bk.S.key))store.set("settings",{...(cur||{}),...bk.S});
+}catch(e){console.warn("settings restore",e)}})();
 const S_DEF={key:"",server:"",token:"",autoChain:true,gateBuyers:15,gateAge:30,autoBundle:false,snipeSlots:8,snapAge:60};
 let S={...S_DEF,...store.get("settings",{})};
 if(!S.key&&store.get("key",""))S.key=store.get("key","");   // migrate v1 key
@@ -495,6 +616,8 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.datas
 function showTab(id){
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x.dataset.tab===id));
   document.querySelectorAll("main section").forEach(s=>s.hidden=s.id!==id);
+  const sec=!!document.querySelector('.sheet button[data-tab="'+id+'"]'),mb=$("#moreBtn");if(mb)mb.classList.toggle("hl",sec);
+  $("#mainNav")?.classList.remove("open");try{scrollTo(0,0)}catch{}
   renderAll(true);
 }
 
@@ -1213,13 +1336,16 @@ let devDied={};
 function rebuildDevDied(){devDied={};for(const h of hist)if(h.dev&&h.mc1!=null&&(h.nd1||h.mc1<h.mc0*0.5))devDied[h.dev]=(devDied[h.dev]||0)+1}
 rebuildDevDied();
 const histIdx=new Set(hist.map(h=>h.m));
+const pathWatch=new Map();   // v6: track each launch's peak/trough market cap during its first hour (for exit tuning)
+for(const h of hist)if(h.pk!=null&&h.mc1==null&&Date.now()<h.t0+H1)pathWatch.set(h.m,h);
+function trackPath(){const now=Date.now();for(const[m,h]of pathWatch){if(h.mc1!=null||now>h.t0+H1+120000){pathWatch.delete(m);continue}const t=tokens.get(m);if(!t||!t.mcSol)continue;if(t.mcSol>h.pk){h.pk=t.mcSol;dirty.hist=true}if(t.mcSol<h.lo){h.lo=t.mcSol;dirty.hist=true}}}
 function logHistory(t,force){
   if(!t.live||histIdx.has(t.mint))return;
   const age=Date.now()-t.created;
   if(age<S.snapAge*1000)return;   // not at snapshot age yet (or trimmed before it): skip
   const a=analyze(t);
-  hist.push({m:t.mint,sy:t.symbol,dev:t.dev,t0:t.created,ts:Date.now(),sc:a.score,fk:a.flags.map(x=>x.k),mc0:t.mcSol,ch:!!t.chain,bd:!!(t.bundle&&!t.bundle.partial),sm:a.smart,by:a.buyers,ft:featuresOf(t,a).join(","),mc1:null,t1:null,mc24:null,t24:null});
-  histIdx.add(t.mint);
+  hist.push({m:t.mint,sy:t.symbol,dev:t.dev,t0:t.created,ts:Date.now(),sc:a.score,fk:a.flags.map(x=>x.k),mc0:t.mcSol,pk:t.mcSol,lo:t.mcSol,ch:!!t.chain,bd:!!(t.bundle&&!t.bundle.partial),sm:a.smart,by:a.buyers,ft:featuresOf(t,a).join(","),mc1:null,t1:null,mc24:null,t24:null});
+  histIdx.add(t.mint);pathWatch.set(t.mint,hist[hist.length-1]);
   if(hist.length>3000){hist.splice(0,hist.length-3000)}
   dirty.hist=true;
 }
@@ -1859,7 +1985,7 @@ $("#sSave").onclick=()=>{
   const prevServer=S.server,prevToken=S.token;
   S={key:$("#sKey").value.trim(),server:window.__PR_SERVER__?"":$("#sServer").value.trim(),token:$("#sToken").value.trim(),autoChain:$("#sAuto").checked,gateBuyers:+$("#sGateB").value||0,gateAge:+$("#sGateAge").value||0,
     autoBundle:$("#sAutoB").checked,snipeSlots:Math.max(1,+$("#sSnipe").value||8),snapAge:Math.max(10,+$("#sSnap").value||60)};
-  store.set("settings",S);try{localStorage.removeItem("pr_key")}catch{}
+  store.set("settings",S);try{localStorage.removeItem("pr_key")}catch{}backupSettings();
   if(S.server!==prevServer||S.token!==prevToken){location.reload();return}
   remoteSync({S});
   $("#sSave").textContent="Saved";setTimeout(()=>$("#sSave").textContent="Save settings",1200);
@@ -1875,7 +2001,7 @@ function featuresOf(t,a){
   const ageMin=Math.max(0.5,(Date.now()-t.created)/60000);
   const f=a.flags.map(x=>x.k);
   f.push("b"+bucket(a.buyers,[10,20,40,80]),"c"+bucket(a.curve,[5,15,30,50]),"s"+bucket(t.sells/(t.buys+1),[.2,.4,.7]),
-    "v"+bucket(a.buyers/ageMin,[10,20,40]),"m"+Math.min(a.smart||0,2),"q"+Math.min(4,Math.floor(a.score/20)));
+    "v"+bucket(a.buyers/ageMin,[10,20,40]),"m"+Math.min(a.smart||0,2),"q"+Math.min(4,Math.floor(a.score/20)),"d"+Math.floor(new Date(t.created).getUTCHours()/6));
   return f;
 }
 function featLabel(k){
@@ -1883,24 +2009,18 @@ function featLabel(k){
   const n=+k.slice(1),t=k[0];
   const r=(cuts,u)=>n===0?`<${cuts[0]}${u}`:n>=cuts.length?`≥${cuts[cuts.length-1]}${u}`:`${cuts[n-1]}–${cuts[n]}${u}`;
   return t==="b"?"buyers "+r([10,20,40,80],""):t==="c"?"curve "+r([5,15,30,50],"%"):t==="s"?"sell/buy ratio "+r([.2,.4,.7],"")
-    :t==="v"?"buyers per min "+r([10,20,40],""):t==="m"?"smart wallets "+n:t==="q"?`score ${n*20}–${n*20+19}`:k;
+    :t==="v"?"buyers per min "+r([10,20,40],""):t==="m"?"smart wallets "+n:t==="q"?`score ${n*20}–${n*20+19}`:t==="d"?`UTC hour ${n*6}–${n*6+5}`:k;
 }
 let MODEL=null;
 function buildModel(){
   const M={n:0,ran:{y:0},die:{y:0},all:{}};
-  for(const h of hist){
-    if(h.mc1==null||!h.mc0)continue;
-    const f=h.ft?h.ft.split(","):h.fk.concat("q"+Math.min(4,Math.floor(h.sc/20)));
-    const ran=h.mc1>=h.mc0*2,die=!!h.nd1||h.mc1<h.mc0*0.5;
-    M.n++;if(ran)M.ran.y++;if(die)M.die.y++;
-    for(const k of f){const a=M.all[k]??={n:0,ran:0,die:0};a.n++;if(ran)a.ran++;if(die)a.die++}
-  }
+  for(const h of hist){if(h.mc1==null||!h.mc0)continue;nbAdd(M,h)}
   MODEL=M;
 }
 function nbProb(M,f,lab){
   const N=M.n,Y=M[lab].y,NY=N-Y;if(!N)return null;
   let s=0;
-  for(const k of f){const a=M.all[k],cy=a?a[lab]:0,cn=a?a.n-a[lab]:0;s+=Math.log((cy+1)/(Y+2))-Math.log((cn+1)/(NY+2))}
+  for(const k of f){const a=M.all[k];if(!a||a.n<30)continue;const cy=a[lab],cn=a.n-a[lab];s+=Math.log((cy+1)/(Y+2))-Math.log((cn+1)/(NY+2))}
   const lo=Math.log((Y+1)/(NY+1))+0.6*s;   // damped: features overlap
   return 1/(1+Math.exp(-lo));
 }
@@ -2022,9 +2142,46 @@ function runResearch(){
     diag:{sc:[qtl(rows.map(r=>r.sc),.1),qtl(rows.map(r=>r.sc),.5),qtl(rows.map(r=>r.sc),.9)],by:[qtl(rows.map(r=>r.by),.5),qtl(rows.map(r=>r.by),.9)],
       x:[qtl(rows.map(r=>r.X0),.5),qtl(rows.map(r=>r.X0),.9),qtl(rows.map(r=>r.X0),.99),Math.max(...rows.map(r=>r.X0))],
       capped:rows.filter(r=>r.X0>XCAP).length,dead:rows.filter(r=>r.X0===0).length,smart:rows.filter(r=>r.sm>0).length}};
+  try{RESEARCH.tune=walkForward(size)}catch(e){RESEARCH.tune={err:"learner test failed: "+e.message}}
   store.set("research",RESEARCH);dirty.bot=true;return RESEARCH;
 }
 const bestResearch=()=>RESEARCH?.top?.find(x=>x.valid)||null;
+/* ---- v6: walk-forward test of the learned model (no look-ahead) ----
+   Replays every resolved launch in time order. The model only ever sees outcomes that were already known at the
+   moment that launch was scored (launch + 1 h), exactly like the live Learner. Thresholds are ranked on the older 60%
+   of decisions and judged on the newest 40%, which they never influenced. */
+function rowFeat(h){return h.ft?h.ft.split(","):h.fk.concat("q"+Math.min(4,Math.floor(h.sc/20)))}   // function declaration on purpose: buildModel() runs at load, before this block
+function nbAdd(M,h){
+  const ran=h.mc1>=h.mc0*2,die=!!h.nd1||h.mc1<h.mc0*0.5;
+  M.n++;if(ran)M.ran.y++;if(die)M.die.y++;
+  for(const k of rowFeat(h)){const a=M.all[k]??={n:0,ran:0,die:0};a.n++;if(ran)a.ran++;if(die)a.die++}
+}
+function walkForward(size){
+  const res=hist.filter(h=>h.mc1!=null&&h.mc0&&h.t0).sort((a,b)=>a.t0-b.t0),need=LEARN_MIN+150;
+  if(res.length<need)return{err:`learner test needs ${need} resolved launches, have ${res.length}`};
+  const M={n:0,ran:{y:0},die:{y:0},all:{}},rows=[];let ptr=0;
+  for(let i=0;i<res.length;i++){
+    const h=res[i],now=h.ts||h.t0;
+    while(ptr<i&&res[ptr].t0+H1<=now){nbAdd(M,res[ptr]);ptr++}
+    if(M.n<LEARN_MIN)continue;
+    const f=rowFeat(h),pr=nbProb(M,f,"ran"),pd=nbProb(M,f,"die"),X=h.nd1?0:Math.min(h.mc1/h.mc0,XCAP);
+    rows.push({p:pr,ev:pr*0.8-pd*0.4-Math.max(0,1-pr-pd)*0.05,f:simRet(X,"floor",size),c:simRet(X,"ceil",size)});
+  }
+  if(rows.length<100)return{err:`only ${rows.length} scored launches after the model warm-up`};
+  const cut=Math.floor(rows.length*0.6),A=rows.slice(0,cut),B=rows.slice(cut),out=[];
+  for(const mp of [0,.05,.1,.15,.2,.25,.3,.4,.5])for(const me of [-.1,-.05,0,.03,.06,.1,.15,.2]){
+    const pass=r=>r.p>=mp&&r.ev>=me,a=A.filter(pass);if(a.length<30)continue;
+    const ta=statOf(a,"f"),tb=statOf(B.filter(pass),"f"),tc=statOf(rows.filter(pass),"c");
+    out.push({p:{minP:mp,minEdge:me},train:ta,test:tb,ceil:tc,valid:ta.mean>0&&tb.n>=15&&tb.mean>0&&(tb.sqn||0)>0});
+  }
+  out.sort((x,y)=>(y.train.sqn??-9)-(x.train.sqn??-9));
+  const curP=r=>r.p>=BOT_CFG.minP&&r.ev>=BOT_CFG.minEdge;
+  return{n:rows.length,trainN:A.length,testN:B.length,base:{train:statOf(A,"f"),test:statOf(B,"f")},
+    cur:{train:statOf(A.filter(curP),"f"),test:statOf(B.filter(curP),"f"),ceil:statOf(rows.filter(curP),"c")},
+    top:out.slice(0,6),nValid:out.filter(x=>x.valid).length};
+}
+const bestTune=()=>RESEARCH?.tune?.top?.find(x=>x.valid)||null;
+
 setInterval(()=>{if(REMOTE)return;const r=hist.filter(h=>h.mc1!=null).length;if(r>=150&&r-(RESEARCH?.resolved||0)>=40)try{runResearch()}catch(e){console.warn("research",e)}},600000);
 setTimeout(()=>{if(!REMOTE&&!RESEARCH)try{runResearch()}catch{}},20000);
 
@@ -2053,9 +2210,178 @@ function renderLab(){
     +R.top.map(x=>`<tr><td class="l">score ≥${x.p.minScore}, buyers ≥${x.p.minBuyers}, smart ≥${x.p.minSmart}</td><td class="l">${st(x.train)}</td><td class="l ${x.test.mean>0?"pos":"neg"}">${st(x.test)}</td>
       <td class="l">${st(x.ceil)}</td><td class="${x.valid?"pos":"neg"}">${x.valid?"✓ holds":"✗"}</td></tr>`).join("");
   $("#labNote").textContent=R&&!R.err?`Last run ${new Date(R.ts).toLocaleString()} · ${R.combos} filter combos · train ${R.trainN} (older 70%) / test ${R.testN} (newest 30%, not used to rank) · ${R.nValid} combos hold out-of-sample.`+(R.diag?` · data: score p10/50/90 ${R.diag.sc.join("/")}, buyers p50/p90 ${R.diag.by.join("/")}, 1h multiple p50/p90/p99/max ${R.diag.x.map(v=>v==null?"—":v.toFixed(2)).join("/")}, ${R.diag.capped} capped above ${XCAP}x, ${R.diag.dead} dead, ${R.diag.smart} with smart wallets.`:""):"";
+  renderLabExtra();
 }
 $("#labRun").onclick=()=>{if(REMOTE){remoteSync({research:true});$("#labNote").textContent="Research requested on the server; refresh in a few seconds.";return}
   try{const r=runResearch();$("#labNote").textContent=r.err||"";}catch(e){$("#labNote").textContent="research failed: "+e.message}renderAll(true)};
+
+/* ===================== v6: CHARTS (inline SVG, no libraries) ===================== */
+let _cid=0;
+const niceStep=(range,n)=>{const raw=(range||1)/n,p=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/p;return(f<1.5?1:f<3?2:f<7?5:10)*p};
+const fmtTm=ts=>new Date(ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+const fmtDy=ts=>new Date(ts).toLocaleDateString([],{month:"short",day:"numeric"});
+const svg=(w,h,inner)=>`<svg viewBox="0 0 ${w} ${h}" width="100%" style="display:block" role="img">${inner}</svg>`;
+const chartW=()=>{const m=document.querySelector("main");return Math.max(280,Math.min(640,(m?m.clientWidth:640)-52))};   // draw at the real width so text stays readable on a phone
+const emptyBox=t=>`<div class="empty">${t}</div>`;
+function chartLines(series,o={}){
+  const W=o.w||chartW(),H=o.h||(W<420?200:230),L=o.left||(W<420?40:46),R=14,T=12,Bm=26;
+  const clean=series.map(s=>({...s,pts:s.pts.filter(p=>p&&isFinite(p[0])&&isFinite(p[1]))}));
+  const all=clean.flatMap(s=>s.pts);
+  if(all.length<2)return emptyBox(o.empty||"Not enough data yet.");
+  let x0=Math.min(...all.map(p=>p[0])),x1=Math.max(...all.map(p=>p[0])),y0=Math.min(...all.map(p=>p[1])),y1=Math.max(...all.map(p=>p[1]));
+  if(o.zero){y0=Math.min(y0,0);y1=Math.max(y1,0)}
+  if(y0===y1){y0-=1;y1+=1}
+  const step=niceStep(y1-y0,4);y0=Math.floor(y0/step+1e-9)*step;y1=Math.ceil(y1/step-1e-9)*step;if(x0===x1)x1=x0+1;
+  const X=x=>L+(x-x0)/(x1-x0)*(W-L-R),Y=y=>T+(1-(y-y0)/(y1-y0))*(H-T-Bm);
+  const yf=o.yfmt||(v=>String(+v.toFixed(2))),xf=o.xfmt||((x1-x0)>36*3600e3?(v=>fmtDy(v)):fmtTm);
+  let g="";const n=Math.round((y1-y0)/step);
+  for(let i=0;i<=n;i++){const v=y0+i*step,y=Y(v),z=Math.abs(v)<step*1e-6;
+    g+=`<line x1="${L}" x2="${W-R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${z&&o.zero?"var(--mute)":"var(--line)"}" stroke-width="1" ${z&&o.zero?'opacity=".6"':'stroke-dasharray="3 4"'}/><text x="${L-7}" y="${(y+3.5).toFixed(1)}" text-anchor="end" class="ax">${yf(v)}</text>`}
+  for(let i=0;i<=3;i++){const xv=x0+(x1-x0)*i/3;g+=`<text x="${X(xv).toFixed(1)}" y="${H-7}" text-anchor="${i===0?"start":i===3?"end":"middle"}" class="ax">${xf(xv)}</text>`}
+  const id="lg"+(++_cid);let body="";
+  clean.forEach((s,i)=>{const pts=s.pts;if(pts.length<2)return;
+    const d=pts.map((p,j)=>(j?"L":"M")+X(p[0]).toFixed(1)+" "+Y(p[1]).toFixed(1)).join("");
+    if(clean.length===1||o.area)body+=`<defs><linearGradient id="${id}${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.color}" stop-opacity=".30"/><stop offset="1" stop-color="${s.color}" stop-opacity="0"/></linearGradient></defs><path d="${d}L${X(pts[pts.length-1][0]).toFixed(1)} ${Y(y0).toFixed(1)}L${X(pts[0][0]).toFixed(1)} ${Y(y0).toFixed(1)}Z" fill="url(#${id}${i})"/>`;
+    body+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const lp=pts[pts.length-1];body+=`<circle cx="${X(lp[0]).toFixed(1)}" cy="${Y(lp[1]).toFixed(1)}" r="3.6" fill="${s.color}" stroke="var(--panel)" stroke-width="1.5"/>`});
+  const legend=clean.length>1?`<div class="legend">${clean.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div>`:"";
+  return svg(W,H,g+body)+legend;
+}
+/* bars: items [{label,sub,vals:[..],colors?:[..]}]; o.names/o.colors name each series */
+function chartBars(items,o={}){
+  if(!items.length)return emptyBox(o.empty||"Not enough data yet.");
+  const W=o.w||chartW(),H=o.h||230,L=44,R=10,T=20,Bm=o.sub?44:32,ns=Math.max(...items.map(i=>i.vals.length));
+  const flat=items.flatMap(i=>i.vals).filter(v=>v!=null&&isFinite(v));
+  let y1=Math.max(o.max||0,...flat),y0=Math.min(0,...flat);if(y1===y0)y1=y0+1;
+  const step=niceStep(y1-y0,4);y1=Math.ceil(y1/step-1e-9)*step;y0=Math.floor(y0/step+1e-9)*step;
+  const Y=y=>T+(1-(y-y0)/(y1-y0))*(H-T-Bm),yf=o.fmt||(v=>String(+v.toFixed(1)));
+  let g="";const n=Math.round((y1-y0)/step);
+  for(let i=0;i<=n;i++){const v=y0+i*step,y=Y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-dasharray="3 4"/><text x="${L-7}" y="${(y+3.5).toFixed(1)}" text-anchor="end" class="ax">${yf(v)}</text>`}
+  const bw=(W-L-R)/items.length,gw=Math.min(bw*0.74,ns>1?90:58),sw=gw/ns,y00=Y(0);let body="";
+  items.forEach((it,i)=>{const cx=L+bw*(i+.5);
+    it.vals.forEach((v,k)=>{if(v==null||!isFinite(v))return;const yv=Y(v),top=Math.min(yv,y00),hh=Math.max(Math.abs(yv-y00),1.5),col=(it.colors&&it.colors[k])||(o.colors&&o.colors[k])||"var(--accent)",bx=cx-gw/2+k*sw;
+      body+=`<rect x="${(bx+1).toFixed(1)}" y="${top.toFixed(1)}" width="${Math.max(sw-2,2).toFixed(1)}" height="${hh.toFixed(1)}" rx="4" fill="${col}"/>`;
+      if(!o.noval&&sw>=15)body+=`<text x="${(bx+sw/2).toFixed(1)}" y="${(v>=0?top-5:top+hh+11).toFixed(1)}" text-anchor="middle" class="val">${yf(v)}</text>`});
+    body+=`<text x="${cx.toFixed(1)}" y="${H-(o.sub?22:10)}" text-anchor="middle" class="ax">${esc(it.label)}</text>`;
+    if(o.sub)body+=`<text x="${cx.toFixed(1)}" y="${H-8}" text-anchor="middle" class="ax" opacity=".7">${esc(it.sub||"")}</text>`});
+  const legend=o.names?`<div class="legend">${o.names.map((nm,k)=>`<span><i style="background:${o.colors[k]}"></i>${esc(nm)}</span>`).join("")}</div>`:"";
+  return svg(W,H,g+body)+legend;
+}
+/* horizontal diverging bars (HTML): rows [{label,value,text,sub,color}] */
+function hbars(rows,o={}){
+  if(!rows.length)return emptyBox(o.empty||"No data yet.");
+  const mx=Math.max(1e-9,...rows.map(r=>Math.abs(r.value)));
+  return rows.map(r=>{const w=Math.min(50,Math.abs(r.value)/mx*50),pos=r.value>=0,col=r.color||(pos?"var(--good)":"var(--bad)");
+    return`<div class="hb"><span class="hl" title="${esc(r.label)}">${esc(r.label)}</span><div class="hbar"><i style="${pos?"left:50%":"right:50%"};width:${w}%;background:${col}"></i></div><b class="${r.value>0?"pos":r.value<0?"neg":""}">${esc(r.text)}</b>${r.sub?`<div class="hsub">${esc(r.sub)}</div>`:""}</div>`}).join("");
+}
+
+/* ===================== v6: HOME dashboard ===================== */
+let homeAt=0;
+const resolvedHist=()=>hist.filter(h=>h.mc1!=null&&h.mc0&&h.t0);
+const xMult=h=>h.nd1?0:h.mc1/h.mc0;
+const BOT_COL=["#f5b041","#34d399","#60a5fa","#a78bfa","#2dd4bf","#fb7185","#c084fc","#fbbf24"];
+function homeSentence(){
+  if(REMOTE&&remoteErr)return{cls:"bad",big:"Can't reach your server",p:"The app can't talk to your 24/7 server right now ("+remoteErr+"). Check Settings, or the Railway deployment."};
+  if(!REMOTE)return{cls:"warn",big:"Running on this phone only",p:"The bots only trade while this page is open. Connect your 24/7 server in Settings so they keep running in the background."};
+  const ft=followTarget();
+  if(ft){const fresh=(ft.b.sig||[]).filter(s=>Date.now()-s.ts<120000&&String(s.kind).startsWith("BUY"));
+    if(fresh.length)return{cls:ft.practice?"warn":"ok",big:`${esc(ft.b.name)} signaled ${esc(fresh[0].kind)} on ${esc(fresh[0].sym)}`,p:ft.practice?"Practice signal. The bot is still proving itself, so don't use real money. Open Follow for the details.":"Copy-ready bot. Open Follow for the size and exit levels."};
+    return ft.practice?{cls:"warn",big:"Practice mode: nothing to do",p:"No bot has proven itself yet. The bots are trading fake money and learning. Real-money rules stay locked."}
+      :{cls:"ok",big:`${esc(ft.b.name)} is copy-ready`,p:"Wait for a BUY card on Follow. Your size and exits are shown there."}}
+  return{cls:"warn",big:"Bots are warming up",p:"They need launches to score before they can signal. This takes a few minutes."};
+}
+function renderHome(force){
+  if(ENGINE)return;
+  const now=Date.now();if(!force&&now-homeAt<8000)return;homeAt=now;
+  if(REMOTE)pollHist();
+  const hs=homeSentence(),res=resolvedHist().sort((a,b)=>a.t0-b.t0),rg=REMOTE&&!hist.length?(remoteInfo?.lab?.regime||{label:"learning"}):regime();
+  const feed=REMOTE?!!remoteInfo?.feed&&!remoteErr:ws?.readyState===1&&now-lastMsg<30000;
+  const rgCls=rg.label==="cold"?"bad":rg.label==="hot"?"ok":rg.label==="normal"?"ok":"warn";
+  const on=bots.filter(b=>b.on),open=bots.reduce((s,b)=>s+Object.keys(b.pos||{}).length,0);
+  $("#homeHero").innerHTML=`<div class="hero"><div><div class="big">${hs.big}</div><p>${hs.p}</p></div>
+    <div class="chips"><span class="chip ${feed?"ok":"bad"}"><i></i>${feed?"Feed live":"Feed down"}</span><span class="chip ${REMOTE?(remoteErr?"bad":"ok"):"warn"}"><i></i>${REMOTE?(remoteErr?"Server offline":"24/7 server"):"Phone only"}</span><span class="chip ${rgCls}"><i></i>Market ${esc(rg.label)}</span></div></div>`;
+  const rets=bots.map(b=>retPct(b)).filter(v=>v!=null),best=rets.length?Math.max(...rets):null,tp=realProt();
+  const lrn=modelN();
+  $("#homeTiles").innerHTML=[
+    ["Bots running",`${on.length}/${bots.length}`,`${open} open position${open===1?"":"s"}`],
+    ["Best paper return",best==null?"—":(best>=0?"+":"")+best.toFixed(1)+"%","practice money"],
+    ["Launches learned",String(res.length),lrn>=LEARN_MIN?"learner active":`learner needs ${LEARN_MIN}`],
+    ["Real-money guard",tp.active?"PAUSE":"Clear",tp.active?esc(tp.reasons[0]):"$5/trade · stop $10"],
+    ["SOL price",SOL_USD?"$"+fmt(SOL_USD):"—","live"]]
+    .map(([k,v,s])=>`<div class="tile"><small>${k}</small><b>${v}</b><span>${s}</span></div>`).join("");
+  /* equity curves */
+  const ser=bots.filter(b=>b.eqHist&&b.eqHist.length>=2).map((b,i)=>{const f0=b.eqHist[0][1]||1;return{name:b.name,color:BOT_COL[i%BOT_COL.length],pts:b.eqHist.map(([t,v])=>[t,(v/f0-1)*100])}});
+  $("#homeEq").innerHTML=chartLines(ser,{zero:true,yfmt:v=>(v>0?"+":"")+(+v.toFixed(1))+"%",empty:"The curves appear after the bots have run for a few minutes."});
+  /* scoreboard */
+  $("#homeBots").innerHTML=hbars(bots.map(b=>{const m=qm(b.closed,b.startSol),rd=readiness(b);
+    return{label:b.name,value:m.n?m.mean:0,text:m.n?(m.mean>=0?"+":"")+m.mean.toFixed(1)+"%":"—",sub:`${b.closed.length}/50 trades · ${rd.checks.filter(c=>c[0]).length}/5 checks${rd.ok?" · copy-ready":""}${b.on?"":" · off"}`}}),{empty:"No bots."});
+  /* outcome distribution */
+  if(res.length<20)$("#homeOut").innerHTML=emptyBox("Needs 20 resolved launches ("+res.length+" so far).");
+  else{const xs=res.map(xMult),pc=f=>xs.filter(f).length/xs.length*100;
+    $("#homeOut").innerHTML=chartBars([{label:"Died",sub:"<0.5x",vals:[pc(x=>x<0.5)],colors:["var(--bad)"]},{label:"Down",sub:"0.5–1x",vals:[pc(x=>x>=0.5&&x<1)],colors:["#fb923c"]},
+      {label:"Up",sub:"1–2x",vals:[pc(x=>x>=1&&x<2)],colors:["var(--blue)"]},{label:"2–5x",sub:"",vals:[pc(x=>x>=2&&x<5)],colors:["var(--good)"]},{label:"5x+",sub:"",vals:[pc(x=>x>=5)],colors:["var(--teal)"]}],
+      {fmt:v=>v.toFixed(v<10?1:0)+"%",sub:true,h:210})+`<div class="sub" style="margin:6px 0 0">Based on ${res.length} launches.</div>`}
+  /* score vs outcome */
+  const bk=[[0,39],[40,59],[60,69],[70,79],[80,89],[90,100]],items=[];
+  for(const[lo,hi]of bk){const l=res.filter(h=>h.sc>=lo&&h.sc<=hi);if(l.length<8)continue;const xs=l.map(xMult);
+    items.push({label:`${lo}–${hi}`,sub:"n="+l.length,vals:[xs.filter(x=>x<0.5).length/l.length*100,xs.filter(x=>x>=2).length/l.length*100]})}
+  $("#homeScore").innerHTML=items.length>=2?chartBars(items,{names:["Died","Ran 2x+"],colors:["var(--bad)","var(--good)"],fmt:v=>v.toFixed(0)+"%",sub:true,h:230}):emptyBox("Needs more resolved launches per score range.");
+  /* rolling mood */
+  const W2=60,last=res.slice(-700),r2=[],d2=[];
+  for(let i=W2;i<=last.length;i++){const w=last.slice(i-W2,i),t=w[w.length-1].t0;r2.push([t,w.filter(h=>xMult(h)>=2).length/W2*100]);d2.push([t,w.filter(h=>xMult(h)<0.5).length/W2*100])}
+  $("#homeRoll").innerHTML=chartLines([{name:"Ran 2x+",color:"#34d399",pts:r2},{name:"Died",color:"#f87171",pts:d2}],{yfmt:v=>Math.round(v)+"%",empty:"Needs more than 60 resolved launches."});
+  /* health */
+  const T0=(REMOTE?remoteInfo?.lab?.research:RESEARCH)?.tune,anyReady=bots.some(b=>readiness(b).ok),hrows=[];
+  const H=(c,t,s)=>hrows.push(`<div class="hrow ${c}"><i></i><div>${t}${s?`<small>${s}</small>`:""}</div></div>`);
+  H(REMOTE?(remoteErr?"bad":"ok"):"warn",REMOTE?(remoteErr?"Server unreachable":"24/7 server connected"):"Not connected to the 24/7 server",REMOTE?(remoteErr?esc(remoteErr):"Bots keep trading with the phone locked."):"Open Settings and check the server URL and token.");
+  H(feed?"ok":"bad",feed?"Launch feed live":"Launch feed down",feed?"":"Waiting for PumpPortal to reconnect.");
+  const rpcOk=REMOTE?(remoteInfo?.rpc||0)>0:!!S.key;H(rpcOk?"ok":"warn",rpcOk?"On-chain checks running":"On-chain checks idle",rpcOk?"":REMOTE?"No RPC calls yet. Check the Helius key on Railway.":"Needs a Helius key (or use the server).");
+  H(lrn>=LEARN_MIN?"ok":"warn","Learner model "+(lrn>=LEARN_MIN?"trained":"learning"),`${lrn} outcomes seen (needs ${LEARN_MIN}).`);
+  H(T0&&T0.top&&T0.top.some(x=>x.valid)?"ok":"warn",T0&&!T0.err?(T0.top.some(x=>x.valid)?"Learner edge holds out-of-sample":"No proven edge yet"):"Edge test waiting for data",T0&&T0.err?esc(T0.err):"See Lab for the walk-forward test.");
+  H(anyReady?"ok":"warn",anyReady?"A bot is copy-ready":"No bot copy-ready yet","Real money stays in practice until one passes all checks.");
+  H("ok","Real-money limits locked","$5 per trade, stop -35%, half off at 2x, hard stop at $10, no entries 01:00–07:00 Amman.");
+  $("#homeHealth").innerHTML=hrows.join("");
+}
+
+/* ===================== v6: Lab extras (learner walk-forward test) ===================== */
+function renderLabExtra(){
+  const R=REMOTE?remoteInfo?.lab?.research:RESEARCH,T0=R?.tune,box=$("#labTune");if(!box)return;
+  const st=s=>!s||!s.n?"—":`${s.n} · ${s.mean>=0?"+":""}${s.mean.toFixed(1)}% · ${s.win.toFixed(0)}% win`;
+  if(!R||R.err&&!T0){$("#labChart").innerHTML=emptyBox("Waiting for enough resolved launches.");box.innerHTML=`<tr><td colspan="5" class="l mute">No test yet.</td></tr>`;return}
+  const items=[];
+  if(R.base)items.push({label:"All",sub:"no filter",vals:[R.base.test.mean],colors:[R.base.test.mean>=0?"var(--good)":"var(--bad)"]});
+  for(const x of(R.top||[]).slice(0,5))items.push({label:`s≥${x.p.minScore}`,sub:`b≥${x.p.minBuyers}`+(x.p.minSmart?` sm${x.p.minSmart}`:""),vals:[x.test.mean],colors:[x.test.mean>=0?"var(--good)":"var(--bad)"]});
+  $("#labChart").innerHTML=chartBars(items,{fmt:v=>(v>=0?"+":"")+v.toFixed(0)+"%",h:230,sub:true,empty:"No filters tested yet."});
+  if(!T0)box.innerHTML=`<tr><td colspan="5" class="l mute">Learner test not run yet.</td></tr>`;
+  else if(T0.err)box.innerHTML=`<tr><td colspan="5" class="l mute">${esc(T0.err)}</td></tr>`;
+  else box.innerHTML=`<tr><td class="l mute">Learner off (take every launch)</td><td class="l">${st(T0.base.train)}</td><td class="l">${st(T0.base.test)}</td><td class="l">—</td><td></td></tr>`
+    +(T0.cur?`<tr><td class="l">Current Learner (P≥0.20, edge≥0.05)</td><td class="l">${st(T0.cur.train)}</td><td class="l ${T0.cur.test.mean>0?"pos":"neg"}">${st(T0.cur.test)}</td><td class="l">${st(T0.cur.ceil)}</td><td></td></tr>`:"")
+    +T0.top.map(x=>`<tr><td class="l">P(2x) ≥ ${x.p.minP}, edge ≥ ${x.p.minEdge}</td><td class="l">${st(x.train)}</td><td class="l ${x.test.mean>0?"pos":"neg"}">${st(x.test)}</td><td class="l">${st(x.ceil)}</td><td class="${x.valid?"pos":"neg"}">${x.valid?"✓ holds":"✗"}</td></tr>`).join("");
+}
+
+/* ===================== v6: settings safety net ===================== */
+function backupSettings(){
+  if(ENGINE)return;
+  try{if(S.server||S.token||S.key){store.set("backup",{t:Date.now(),S:{server:S.server||"",token:S.token||"",key:S.key||""}});}}catch{}
+  updBackupUi();
+}
+let persisted=null;
+try{navigator.storage?.persist?.().then(ok=>{persisted=ok;updBackupUi()}).catch(()=>{})}catch{}
+function updBackupUi(){
+  const el=$("#bkStat");if(!el)return;const bk=store.get("backup",null);
+  el.textContent=bk?`Auto-backup saved ${new Date(bk.t).toLocaleString()} · browser storage: ${persisted===true?"persistent":persisted===false?"may be cleared by the browser":"checking"}.`:"No backup yet. Save your settings once and it is created automatically.";
+}
+function setupLink(){const j=btoa(JSON.stringify({v:1,server:S.server||"",token:S.token||""})).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");return location.origin+location.pathname+"#setup="+j}
+$("#bkLink").onclick=async()=>{const l=setupLink();try{await navigator.clipboard.writeText(l);$("#bkLink").textContent="Copied ✓"}catch{prompt("Copy your setup link:",l)}setTimeout(()=>$("#bkLink").textContent="Copy setup link",1600)};
+$("#bkDl").onclick=()=>{const b=new Blob([JSON.stringify({app:"pumpradar",v:6,ts:Date.now(),settings:{server:S.server||"",token:S.token||"",key:S.key||"",autoChain:S.autoChain,gateBuyers:S.gateBuyers,gateAge:S.gateAge,autoBundle:S.autoBundle,snipeSlots:S.snipeSlots,snapAge:S.snapAge},rules,weights:W,tcfg:T},null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="pumpradar-settings-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),3000)};
+$("#bkFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  try{const j=JSON.parse(await f.text());if(j.app!=="pumpradar"||!j.settings)throw new Error("not a PumpRadar backup");
+    store.set("settings",{...S_DEF,...store.get("settings",{}),...j.settings});if(j.rules)store.set("rules",j.rules);if(j.weights)store.set("weights",j.weights);if(j.tcfg)store.set("tcfg",j.tcfg);location.reload()}
+  catch(err){alert("Couldn't restore: "+err.message)}};
+$("#moreBtn").onclick=e=>{e.stopPropagation();$("#mainNav").classList.toggle("open")};
+document.addEventListener("click",e=>{if(!e.target.closest("#mainNav"))$("#mainNav").classList.remove("open")});
+backupSettings();
 
 /* ===================== AUTO-EVOLVE (spawn tweaked copies of the best bot, retire losers) ===================== */
 function mutate(c){
@@ -2090,6 +2416,11 @@ function evolve(){
     if(!EVO.resKeys.includes(key)){EVO.resKeys.push(key);if(EVO.resKeys.length>20)EVO.resKeys.shift();EVO.n++;
       const ch=newBot("Research "+EVO.n,{...br.p,minAge:30,maxAge:600});ch.gen=EVO.n;ch.research=true;bots.push(ch);
       evoNote(`Spawned ${ch.name} from self-research (score ≥${br.p.minScore}, buyers ≥${br.p.minBuyers}, smart ≥${br.p.minSmart}; test ${br.test.mean.toFixed(1)}%/trade on ${br.test.n} unseen)`)}}
+  const bt=bestTune();
+  if(bt&&bots.length<8){const key="T"+JSON.stringify(bt.p);
+    if(!EVO.resKeys.includes(key)){EVO.resKeys.push(key);if(EVO.resKeys.length>20)EVO.resKeys.shift();EVO.n++;
+      const ch=newBot("Tuned "+EVO.n,{learn:true,minScore:40,minAge:55,maxAge:240,minBuyers:5,minCurve:0,maxCurve:80,minP:bt.p.minP,minEdge:bt.p.minEdge});ch.gen=EVO.n;ch.research=true;bots.push(ch);
+      evoNote(`Spawned ${ch.name} from the walk-forward test (P(2x) >= ${bt.p.minP}, edge >= ${bt.p.minEdge}; unseen test ${bt.test.mean.toFixed(1)}%/trade on ${bt.test.n} launches)`)}}
   if(!bots.includes(B)){B=bots[0];selId=B.id}
   dirty.bot=true;
 }
@@ -2180,7 +2511,7 @@ async function pollRemote(){
 let histAt=0;
 async function pollHist(){
   if(Date.now()-histAt<60000)return;histAt=Date.now();
-  try{const r=await api("/api/hist",{},30000);if(r.ok){hist=await r.json();histIdx.clear();hist.forEach(h=>histIdx.add(h.m));rebuildDevDied();renderHist()}}catch{}
+  try{const r=await api("/api/hist",{},30000);if(r.ok){hist=await r.json();histIdx.clear();hist.forEach(h=>histIdx.add(h.m));rebuildDevDied();renderHist();homeAt=0;if(document.querySelector("nav button.on")?.dataset.tab==="home")renderHome(true)}}catch{}
 }
 function remoteSync(extra={}){
   if(!REMOTE)return;localEditAt=Date.now();
@@ -2196,6 +2527,7 @@ function renderAll(force){
   const tab=document.querySelector("nav button.on").dataset.tab;
   $("#tokCount").textContent=tokens.size+" tokens";$("#rpcStat").textContent="RPC "+rpcCalls+(queue.length?" (+"+queue.length+" queued)":"");
   $("#follStat").textContent=Object.keys(follow).length+" followed";
+  if(tab==="home")renderHome(force);
   if(tab==="scan")renderScan();if(tab==="watch")renderWatch();if(tab==="wallet")renderWallet();
   if(tab==="follow")renderFollow();if(tab==="risk")renderRisk();if(tab==="stats")renderStats();if(tab==="bot")renderBot();if(tab==="lab")renderLab();
   if(tab==="traders"&&(force||tab!==lastTab||Date.now()%6000<2100))renderTraders();
@@ -2206,6 +2538,7 @@ function renderAll(force){
 function tick(){
   if(!REMOTE){
     for(const t of tokens.values())logHistory(t,false);
+    trackPath();
     if(ws&&ws.readyState===1&&Date.now()-lastMsg>30000&&!paused&&(ENGINE||document.visibilityState==="visible"))reconnectNow();
     autoScan();botTick();
   }else $("#botStat").textContent=`${bots.filter(b=>b.on).length} bots on (server)`;

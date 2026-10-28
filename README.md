@@ -40,4 +40,11 @@ Ideas ported from open-source trading frameworks and re-implemented here; no cod
 - **Regime:** compares the last 50 resolved launches with the baseline (hot / normal / cold) and warns on cold.
 - **Plumbing (ccxt, gocryptotrader):** DexScreener capped at 200 calls/min, WebSocket reconnect with exponential backoff and jitter.
 
+## v6 (Home dashboard, tuning, settings safety)
+- **Home tab:** plain-English status, bot equity curves, bot scoreboard, outcome distribution, score-vs-outcome chart, market mood and a system check. Charts are inline SVG (no libraries).
+- **Navigation:** icon tab bar on phones with a **More** sheet; same tabs, friendlier names.
+- **Settings are never lost:** all storage keys are unchanged, so updating the app keeps everything. A second automatic backup is kept, a **setup link** restores the server URL and token on any device, and a JSON backup can be downloaded and restored from Settings.
+- **Learner fine-tuning (Lab):** a walk-forward test replays every resolved launch in time order with no look-ahead, ranks thresholds on the older 60% and judges them on the newest 40%. A threshold that also holds on unseen launches spawns a paper bot named `Tuned N`. The Learner now ignores features seen fewer than 30 times and has a time-of-day feature.
+- **Exit tuning data:** each launch now logs its peak and trough market cap during the first hour (`pk`, `lo`), so exit rules (take-profit, stop, trail) can be tuned on real price paths once enough rows exist.
+
 Data: PumpPortal WebSocket, DexScreener, Helius RPC (read-only methods only), Jupiter quotes.

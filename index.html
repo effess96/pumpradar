@@ -1025,6 +1025,23 @@ function phase4Gate(rep){
   if(pc?.h1>150)warns.push(`+${Math.round(pc.h1)}% in 1 h: chasing a spike`);
   return{blocks,warns};
 }
+/* Phase 4 gate for Telegram BUY signals: same hard rules as the checker, run on the server before the alert is sent.
+   Fails closed: if the checks can't finish in 20 s, the signal is sent as BLOCKED. */
+async function signalGate(mint){
+  const run=async()=>{
+    const t=tokens.get(mint)||{};const rep={mint,errors:[]};
+    try{rep.pair=(await dexPairs([mint],new Set()))[mint]||null}catch{rep.pair=null}
+    rep.bundle=t.bundle||null;rep.dev=t.dev||rep.bundle?.dev||null;
+    rep.chain=t.chain||null;
+    if(!rep.chain&&hasKey()){try{rep.chain=await chainScan(mint,rep.dev)}catch{}}
+    rep.createdAt=rep.bundle?.createdAt||rep.pair?.pairCreatedAt||t.created||null;
+    try{rep.a=analyze(t)}catch{rep.a=null}
+    rep.ath=await athCheck(rep);
+    return phase4Gate(rep);
+  };
+  const timeout=new Promise(r=>setTimeout(()=>r({blocks:["gate checks timed out (unverified = no entry)"],warns:[]}),20000));
+  try{return await Promise.race([run(),timeout])}catch(e){return{blocks:["gate error: "+e.message],warns:[]}}
+}
 function rugGuard(rep){  // port of Solana Rug Guard's 13 factors (max points as published)
   const c=rep.chain||{},b=rep.bundle&&!rep.bundle.partial?rep.bundle:null,p=rep.pair,f=[];
   const add=(n,max,pts,why)=>f.push({n,max,pts,why});
@@ -1318,7 +1335,11 @@ function signal(b,kind,p,extra){
   const ft=followTarget();
   if(ft&&ft.b===b){
     const ready=!ft.practice;
-    if(ENGINE&&window.__prSignal){const sz=yourSize();try{window.__prSignal({bot:b.name,kind,sym:p.sym,mint:p.mint,practice:ft.practice,mc:extra.mcUsd,why:extra.why,sizeUsd:sz.usd,sizeSol:sz.sol,locked:sz.locked,tp:rules.tp,sl:rules.sl})}catch{}}
+    if(ENGINE&&window.__prSignal){const sz=yourSize();
+      const msg={bot:b.name,kind,sym:p.sym,mint:p.mint,practice:ft.practice,mc:extra.mcUsd,why:extra.why,sizeUsd:sz.usd,sizeSol:sz.sol,locked:sz.locked,tp:rules.tp,sl:rules.sl};
+      const send=m=>{try{window.__prSignal(m)}catch{}};
+      if(String(kind).startsWith("BUY"))signalGate(p.mint).then(g=>{msg.gate=g;if(g.blocks.length){msg.sizeUsd=0;msg.sizeSol=0}send(msg)});   // Phase 4 gates on every Telegram BUY
+      else send(msg)}
     notify(`PumpRadar ${ready?"COPY":"PRACTICE"} ${kind}`,`[${b.name}] ${text}`);
     beep(kind);flashTitle(`⚡ ${kind} ${p.sym}`);
     log(`${ready?"COPY":"PRACTICE"} [${b.name}] ${text}`);

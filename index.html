@@ -427,7 +427,8 @@ const W_LABEL={mintAuth:"Mint authority live",freezeAuth:"Freeze authority live"
 let W={...W_DEF,...store.get("weights",{})};
 /* PHASE 4 (started by Basha 2026-10-28): real money with hard limits. These caps cannot be loosened from the Risk screen.
    Bankroll $20 · max $5 per trade (25%) · take 50% off at 2x · stop -35% · hard stop when bankroll reaches $10 · no entries 01:00–07:00 Amman. */
-const PHASE4={bank:20,max:25,tp:2,sl:35,daily:10,floor:10,minScore:60,curfewFrom:1,curfewTo:7};
+const PHASE4={bank:20,max:25,tp:2,sl:35,daily:10,floor:10,minScore:60,curfewFrom:1,curfewTo:7,
+  maxOpen:4,topMax:25,devMax:5,athHours:6};   // screening rules confirmed by Basha 2026-10-28: top-10 ≤25%, dev ≤5% and no early dev sell, no entry if >6h old without a new ATH, max 4 open positions
 let rules={bank:20,max:25,tp:2,sl:35,daily:10,floor:10,minScore:60,...store.get("rules",{})};
 function clampRules(){rules.bank=Math.min(rules.bank,PHASE4.bank);rules.max=Math.min(rules.max,PHASE4.max);rules.sl=Math.min(rules.sl,PHASE4.sl);
   rules.daily=Math.min(rules.daily,PHASE4.daily);rules.floor=Math.max(rules.floor,PHASE4.floor);rules.minScore=Math.max(rules.minScore,PHASE4.minScore);rules.tp=PHASE4.tp}
@@ -966,6 +967,64 @@ async function jupSellable(mint,decimals){
     const r=await fetchTimeout(`https://lite-api.jup.ag/swap/v1/quote?inputMint=${mint}&outputMint=${WSOL}&amount=${amt}&slippageBps=1000`,{},8000);
     if(!r.ok)return null;const j=await r.json();return +j.outAmount>0}catch{return null}
 }
+/* Phase 4 gate. Logic only (own code, no third-party code run):
+   - OHLCV all-time-high check via GeckoTerminal's public API, for the "older than 6 h with no new ATH" rule. Hourly candles, so ±1 h precision.
+     Tokens still on the bonding curve have no pool, so the ATH is unverified; that only matters once the token is older than 6 h.
+   - Buy/sell pressure and momentum from DexScreener txns/priceChange. WARN-only, never blocks.
+   KOL data is deliberately not used for entries. Every rule here fails closed: unverified = no entry. */
+async function athCheck(rep){
+  const out={ok:false,note:""};
+  const pool=rep.pair?.pairAddress;
+  if(!pool){out.note="no pool (still on the bonding curve or no pair found)";return out}
+  try{
+    const r=await fetchTimeout(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${encodeURIComponent(pool)}/ohlcv/hour?aggregate=1&limit=1000&currency=usd`,{},10000);
+    if(!r.ok){out.note="GeckoTerminal "+r.status;return out}
+    const j=await r.json(),L=j?.data?.attributes?.ohlcv_list;
+    if(!Array.isArray(L)||!L.length){out.note="no candles";return out}
+    let best=null;for(const c of L){const hi=+c[2];if(isFinite(hi)&&(!best||hi>best.hi))best={hi,ts:+c[0]*1000}}
+    if(!best){out.note="bad candle data";return out}
+    out.ok=true;out.athUsd=best.hi;out.athTs=best.ts;out.candles=L.length;
+    out.hoursSinceAth=Math.max(0,(Date.now()-(best.ts+3600e3))/3600e3);   // candle end → now
+    out.fresh=out.hoursSinceAth<=PHASE4.athHours;
+    return out;
+  }catch(e){out.note="GeckoTerminal: "+e.message;return out}
+}
+function openPositionCount(){
+  if(!Object.keys(positions).length)return null;   // wallet not loaded
+  return Object.values(positions).filter(p=>{const h=p.lots.reduce((a,l)=>a+l.amt,0);
+    if(h<=1e-9)return false;
+    return p.px!=null&&SOL_USD?h*p.px*SOL_USD>=0.5:true}).length;   // ignore sub-$0.50 dust
+}
+function phase4Gate(rep){
+  const blocks=[],warns=[],c=rep.chain,p=rep.pair,r=riskCheck();
+  if(r.curfew)blocks.push("01:00–07:00 Amman: no new entries");
+  const open=openPositionCount();
+  if(open==null)warns.push("wallet not loaded: open-position count (max "+PHASE4.maxOpen+") unverified");
+  else if(open>=PHASE4.maxOpen)blocks.push(`${open} open positions (max ${PHASE4.maxOpen})`);
+  if(!c)blocks.push("on-chain scan missing: top-10, dev % and authorities unverified");
+  else{
+    if(c.top10==null)blocks.push("top-10 holders unverified");
+    else if(c.top10>PHASE4.topMax)blocks.push(`top-10 holders ${c.top10.toFixed(1)}% > ${PHASE4.topMax}% (excl. curve/pool)`);
+    if(c.devPct==null)blocks.push("dev holding unverified");
+    else if(c.devPct>PHASE4.devMax)blocks.push(`dev holds ${c.devPct.toFixed(1)}% > ${PHASE4.devMax}%`);
+  }
+  if(rep.a?.flags?.some(f=>f.k==="devSold")||rep.bundle?.devSoldEarly)blocks.push("dev sold early");
+  const ageH=rep.createdAt?(Date.now()-rep.createdAt)/3600e3:null;
+  const onCurve=!!c?.curve&&!c.curve.complete;
+  if(ageH==null)blocks.push("token age unknown");
+  else if(ageH>PHASE4.athHours){
+    if(rep.ath?.ok){if(!rep.ath.fresh)blocks.push(`older than ${PHASE4.athHours} h and last ATH was ${rep.ath.hoursSinceAth.toFixed(1)} h ago`)}
+    else blocks.push(`older than ${PHASE4.athHours} h and ATH unverified (${rep.ath?.note||"no data"})`);
+  }
+  const t=p?.txns,pc=p?.priceChange;
+  const flow=(k)=>t?.[k]&&(t[k].buys+t[k].sells)>0?t[k].buys/Math.max(1,t[k].sells):null;
+  const f5=flow("m5"),f1=flow("h1");
+  rep.flow={m5:t?.m5||null,h1:t?.h1||null,h6:t?.h6||null,pc:pc||null,f5,f1};
+  if(f1!=null&&f1<0.9)warns.push(`1 h sells outweigh buys (${t.h1.buys}/${t.h1.sells})`);
+  if(f5!=null&&f5<0.8&&(t.m5.buys+t.m5.sells)>=10)warns.push(`5 min sell pressure (${t.m5.buys}/${t.m5.sells})`);
+  if(pc?.h1>150)warns.push(`+${Math.round(pc.h1)}% in 1 h: chasing a spike`);
+  return{blocks,warns};
+}
 function rugGuard(rep){  // port of Solana Rug Guard's 13 factors (max points as published)
   const c=rep.chain||{},b=rep.bundle&&!rep.bundle.partial?rep.bundle:null,p=rep.pair,f=[];
   const add=(n,max,pts,why)=>f.push({n,max,pts,why});
@@ -1000,6 +1059,7 @@ function sizing(rep){
   if(rep.a.critical){usd=0;why.push("critical authority/extension flag")}
   if(rep.a.score<rules.minScore){usd=0;why.push(`score ${rep.a.score} < your min ${rules.minScore}`)}
   if(rep.sellable===false){usd=0;why.push("no sell route")}
+  for(const g of rep.gate?.blocks||[]){usd=0;why.push(g)}   // Phase 4 hard gates
   const sol=SOL_USD?usd/SOL_USD:null;
   const c=rep.chain?.curve,liq=+rep.pair?.liquidity?.usd||0;
   let impact=null;
@@ -1029,7 +1089,9 @@ async function runCheck(){
     if(!live){await fetchMeta(t);if(rep.bundle?.devSoldEarly)t.devSold=true}
     if(rep.chain)t.chain=rep.chain;if(rep.bundle)t.bundle=rep.bundle;if(rep.dev&&!t.dev)t.dev=rep.dev;
     if(!t.mcSol&&rep.chain?.curve)t.mcSol=rep.chain.curve.mcSol;
-    rep.a=analyze(t);rep.rg=rugGuard(rep);rep.size=sizing(rep);rep.links=t.links;
+    rep.a=analyze(t);rep.rg=rugGuard(rep);
+    rep.ath=await athCheck(rep);rep.gate=phase4Gate(rep);
+    rep.size=sizing(rep);rep.links=t.links;
     lastReport=rep;
   }catch(e){$("#cOut").innerHTML=`<div class="banner bad">Check failed: ${esc(e.message)}</div>`;lastReport=null}
   finally{checking=false}
@@ -1086,6 +1148,14 @@ function renderCheck(){
     </div></div>
   </div>
   <div class="panel"><b>Flags</b><p class="flags" style="font-size:12.5px;margin:6px 0 0">${esc(a.flags.map(x=>x.l).join(" · ")||"none")}</p></div>
+  <div class="panel"><b>Phase 4 gate</b>${rep.gate?.blocks.length?`<p class="neg" style="font-size:12.5px;margin:6px 0 0">BLOCKED: ${rep.gate.blocks.map(esc).join(" · ")}</p>`:`<p class="pos" style="font-size:12.5px;margin:6px 0 0">All hard gates pass.</p>`}
+    ${rep.gate?.warns.length?`<p class="flags" style="font-size:12.5px;margin:6px 0 0">WARN: ${rep.gate.warns.map(esc).join(" · ")}</p>`:""}
+    <div class="kv" style="margin-top:8px">
+      <span>Buys/sells 5m · 1h · 6h</span><span>${["m5","h1","h6"].map(k=>rep.flow?.[k]?rep.flow[k].buys+"/"+rep.flow[k].sells:"—").join(" · ")}</span>
+      <span>Price change 5m · 1h · 6h</span><span>${["m5","h1","h6"].map(k=>rep.flow?.pc?.[k]!=null?(rep.flow.pc[k]>0?"+":"")+Math.round(rep.flow.pc[k])+"%":"—").join(" · ")}</span>
+      <span>Last ATH (hourly candles)</span><span>${rep.ath?.ok?"$"+(+rep.ath.athUsd).toPrecision(3)+" · "+rep.ath.hoursSinceAth.toFixed(1)+" h ago":esc(rep.ath?.note||"unverified")}</span>
+      <span>Stop · 2x (from your entry)</span><span>entry × 0.65 · entry × 2 (sell 50%)</span>
+    </div></div>
   <div class="two">
     <div><h3>Top holders (on-chain)</h3><div class="tbl"><table><thead><tr><th class="l">#</th><th class="l">Owner</th><th>% supply</th><th class="l">Tag</th></tr></thead>
       <tbody>${holders||`<tr><td colspan="4" class="l mute">No holder data.</td></tr>`}</tbody></table></div>

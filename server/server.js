@@ -84,6 +84,11 @@ const server = http.createServer(async (req, res) => {
   try {
     const u = new URL(req.url, "http://x"), p = u.pathname;
     if (req.method === "OPTIONS") return send(res, 204, "");
+    if (p === "/pub/trader") {   // read-only bot status for the HQ map (no auth, no secrets)
+      if (!trader) return send(res, 200, { mode: "off" });
+      if (Date.now() - pubAt > 15000) { pubSnap = await trader.snapshot().catch(e => ({ mode: "error", error: e.message })); pubAt = Date.now(); }
+      return send(res, 200, pubSnap);
+    }
     if (p === "/api/ping") return send(res, 200, { ok: true, engine: engineOk });
     if (p.startsWith("/api/")) {
       if (!authed(req)) return send(res, 401, { error: "unauthorized" });
@@ -141,7 +146,7 @@ async function tg(method, params) {
 }
 const h = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 const K = n => n == null || isNaN(n) ? "—" : n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "k" : (+n).toFixed(0);
-let trader = null;   // created after tg() exists (see below)
+let trader = null, pubSnap = null, pubAt = 0;   // created after tg() exists (see below)
 async function onSignal(p) {
   if (trader && trader.enabled()) {          // auto-trader acts on the raw signal (its own gate + hard limits), independent of Telegram
     const buy0 = String(p.kind).startsWith("BUY");

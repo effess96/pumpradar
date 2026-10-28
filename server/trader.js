@@ -175,7 +175,27 @@ function makeTrader({ dataDir, heliusKey, tz, notify }) {
     }
     return null;
   }
+  // Equity history for the HQ map (one point every 10 min, last ~3 days)
+  async function recordEquity() {
+    if (!kp) return; const v = await walletUsd().catch(() => null); if (v == null) return;
+    st.equity = st.equity || []; st.equity.push([Date.now(), +v.toFixed(2)]); if (st.equity.length > 432) st.equity.splice(0, st.equity.length - 432); save();
+  }
+  setInterval(recordEquity, 600000); setTimeout(recordEquity, 15000);
+  // Public, read-only snapshot for the HQ map. No keys, no secrets: only what a block explorer would show anyway.
+  async function snapshot() {
+    rollDay();
+    const v = await walletUsd().catch(() => null), px = solUsd || 0;
+    return {
+      mode: !kp ? "no-key" : !enabled ? "off" : LIVE ? "live" : "dry", halted: st.halted, haltReason: st.haltReason,
+      wallet: kp ? kp.publicKey.toBase58() : null, walletUsd: v, solUsd: px || null,
+      buysToday: st.buysToday, maxBuys: LIMITS.maxBuysPerDay, realizedTodayUsd: +(st.realizedToday * px).toFixed(2), realizedAllUsd: +((st.realizedAll || 0) * px).toFixed(2),
+      positions: Object.values(st.positions).map(p => ({ sym: p.sym, mint: p.mint, dry: !!p.dry, costUsd: +(p.costSol * px).toFixed(2), x: p.lastValSol != null ? +(p.lastValSol / p.costSol).toFixed(3) : null, ageMin: Math.round((Date.now() - p.opened) / 60000), tpHit: !!p.tpHit })),
+      log: st.log.slice(0, 40), equity: (st.equity || []).slice(-144),
+      limits: { maxUsd: LIMITS.maxUsd, maxOpen: LIMITS.maxOpen, tpX: LIMITS.tpX, slX: LIMITS.slX, maxHoldMin: LIMITS.maxHoldMin, hardStopUsd: LIMITS.hardStopUsd, curfew: [LIMITS.curfewFrom, LIMITS.curfewTo] },
+      at: new Date().toISOString()
+    };
+  }
   if (kp) console.log(`trader: ${enabled ? (LIVE ? "LIVE" : "DRY RUN") : "disabled"} · wallet ${kp.publicKey.toBase58().slice(0, 4)}…`);
-  return { onBuySignal, onSellSignal, command, enabled: () => enabled, live: LIVE, LIMITS };
+  return { onBuySignal, onSellSignal, command, snapshot, enabled: () => enabled, live: LIVE, LIMITS };
 }
 module.exports = { makeTrader, LIMITS };

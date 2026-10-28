@@ -144,11 +144,14 @@ async function onSignal(p) {
   if (p.practice && !TG_PRACTICE) return;
   const buy = String(p.kind).startsWith("BUY");
   const head = `${buy ? "🟢" : "🔴"} <b>${h(p.kind)} ${h(p.sym)}</b> · ${p.practice ? "🟡 PRACTICE (paper only)" : "COPY"}`;
+  const blocked = buy && p.gate && p.gate.blocks && p.gate.blocks.length;
   const act = buy
-    ? (p.practice ? "Real size: $0. Practice signal, don't use real money." : p.locked ? "⛔ Your rules locked you out today. Skip." :
+    ? (blocked ? `⛔ <b>BLOCKED by Phase 4 gate. Skip.</b>\n• ${p.gate.blocks.map(h).join("\n• ")}` :
+       p.practice ? "Real size: $0. Practice signal, don't use real money." : p.locked ? "⛔ Your rules locked you out today. Skip." :
        `Your size: <b>$${(+p.sizeUsd).toFixed(2)}</b>${p.sizeSol ? ` (${(+p.sizeSol).toFixed(3)} SOL)` : ""}`)
     : (p.kind === "SELL ALL" ? "Sell <b>all</b> of it." : `Sell <b>${h(String(p.kind).replace("SELL ", ""))}</b> of your position.`);
-  const plan = buy ? `\nPlan: sell half at ${p.tp}x, everything at −${p.sl}%. Skip if this is older than 30 s.` : "";
+  const warn = buy && p.gate && p.gate.warns && p.gate.warns.length ? `\n⚠️ ${p.gate.warns.map(h).join(" · ")}` : "";
+  const plan = buy && !blocked ? `\nPhase 4 gate: ✅ all hard checks pass.${warn}\nPlan: sell half at ${p.tp}x, everything at −${p.sl}%. Run the autopsy, and skip if this is older than 30 s.` : (blocked ? warn : "");
   await tg("sendMessage", { chat_id: tgState.chat, parse_mode: "HTML", disable_web_page_preview: true,
     text: `${head}\n${act}\nMC $${K(p.mc)} · ${h(p.why)}\nBot: ${h(p.bot)}${plan}`,
     reply_markup: { inline_keyboard: [[{ text: "Open in pump.fun", url: `https://pump.fun/coin/${p.mint}` }]] } });

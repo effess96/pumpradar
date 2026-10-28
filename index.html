@@ -292,12 +292,12 @@ a.btn{background:var(--accent);color:#1a1205}a.btn.ghost{background:var(--panel)
   <div id="riskBanner"></div>
   <div class="panel">
     <div class="bar">
-      <label>Starting bankroll $<input id="rBank" type="number" value="200" style="width:100px"></label>
-      <label>Max per trade %<input id="rMax" type="number" value="10" class="n"></label>
+      <label>Starting bankroll $<input id="rBank" type="number" value="20" style="width:100px"></label>
+      <label>Max per trade %<input id="rMax" type="number" value="25" class="n"></label>
       <label>Take profit x<input id="rTp" type="number" value="2" step="0.1" class="n"></label>
-      <label>Stop loss %<input id="rSl" type="number" value="40" class="n"></label>
-      <label>Daily loss limit $<input id="rDaily" type="number" value="40" style="width:100px"></label>
-      <label>Lock-out floor $<input id="rFloor" type="number" value="100" style="width:100px"></label>
+      <label>Stop loss %<input id="rSl" type="number" value="35" class="n"></label>
+      <label>Daily loss limit $<input id="rDaily" type="number" value="10" style="width:100px"></label>
+      <label>Lock-out floor $<input id="rFloor" type="number" value="10" style="width:100px"></label>
       <label>Min score to buy<input id="rMinScore" type="number" value="60" class="n"></label>
       <button class="btn" id="rSave">Save rules</button>
     </div>
@@ -425,7 +425,15 @@ const W_LABEL={mintAuth:"Mint authority live",freezeAuth:"Freeze authority live"
   proSnipers:"Repeat snipers ≥2",serialDev:"Serial dev (per extra)",devRugs:"Dev's past tokens died",noSocials:"No socials",lowInterest:"Low interest",
   sellPressure:"Sell pressure (sells ≥80% of buys)",smartBuy:"Smart wallet bought (per wallet, max 2)"};
 let W={...W_DEF,...store.get("weights",{})};
-let rules={bank:200,max:10,tp:2,sl:40,daily:40,floor:100,minScore:60,...store.get("rules",{})};
+/* PHASE 4 (started by Basha 2026-10-28): real money with hard limits. These caps cannot be loosened from the Risk screen.
+   Bankroll $20 · max $5 per trade (25%) · take 50% off at 2x · stop -35% · hard stop when bankroll reaches $10 · no entries 01:00–07:00 Amman. */
+const PHASE4={bank:20,max:25,tp:2,sl:35,daily:10,floor:10,minScore:60,curfewFrom:1,curfewTo:7};
+let rules={bank:20,max:25,tp:2,sl:35,daily:10,floor:10,minScore:60,...store.get("rules",{})};
+function clampRules(){rules.bank=Math.min(rules.bank,PHASE4.bank);rules.max=Math.min(rules.max,PHASE4.max);rules.sl=Math.min(rules.sl,PHASE4.sl);
+  rules.daily=Math.min(rules.daily,PHASE4.daily);rules.floor=Math.max(rules.floor,PHASE4.floor);rules.minScore=Math.max(rules.minScore,PHASE4.minScore);rules.tp=PHASE4.tp}
+clampRules();
+function ammanHour(){return +new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Amman",hour:"2-digit",hour12:false}).format(new Date())%24}
+function inCurfew(){const h=ammanHour();return h>=PHASE4.curfewFrom&&h<PHASE4.curfewTo}
 
 /* persistent registries */
 let devReg=store.get("devReg",{});        // dev -> {n,last}
@@ -1368,7 +1376,7 @@ function botEntries(b){
 /* Follows the lead bot when one is copy-ready (or picked manually); otherwise the best bot so far, in PRACTICE mode. */
 /* PAPER_ONLY: House Agents Phase 1–3 lock. While true, every signal is PRACTICE with $0 real size, even from a copy-ready bot.
    Set to false only when Basha deliberately starts Phase 4 (and the server's PAPER_ONLY variable must also be 0). */
-const PAPER_ONLY=true;
+const PAPER_ONLY=false;   // Phase 4 started 2026-10-28 with the PHASE4 hard limits above
 let practiceId=null;
 function followTarget(){const ft=followTargetRaw();return ft&&PAPER_ONLY?{...ft,practice:true}:ft}
 function followTargetRaw(){
@@ -1388,6 +1396,7 @@ let hiddenAt=null,lastPauseMs=0,lastResumeAt=0;
 function yourSize(){
   const r=riskCheck();
   if(r.locked)return{usd:0,locked:true};
+  if(r.curfew)return{usd:0,locked:true,curfew:true};
   const usd=Math.max(0,Math.min(r.maxUsd,rules.daily-r.dayLoss,r.bankroll-rules.floor));
   return{usd,sol:SOL_USD?usd/SOL_USD:null,locked:false};
 }
@@ -1402,7 +1411,7 @@ function renderFollow(){
   $("#fNote").hidden=REMOTE;$("#fPhone").hidden=REMOTE;
   if(lastPauseMs>60000&&now-lastResumeAt<120000)st.push(`<div class="banner warn">Bots were paused ${dur(lastPauseMs)} while this screen was off. Exits were re-checked on return.</div>`);
   const sz=yourSize();
-  if(sz.locked)st.push(`<div class="banner bad">STOP: your risk rules locked you out for today. Don't copy anything.</div>`);
+  if(sz.locked)st.push(`<div class="banner bad">${sz.curfew?"No new entries 01:00–07:00 Amman (Phase 4). Sells are fine.":"STOP: your risk rules locked you out. Don't copy anything."}</div>`);
   if(!ft)st.push(`<div class="banner warn">All bots are stopped. Open Bots → Start all bots.</div>`);
   else st.push(`<div class="banner ${ft.practice?"warn":"ok"}">Following <b>${esc(ft.b.name)}</b> · ${ft.practice
       ?(PAPER_ONLY?"PAPER ONLY: log these on paper. Real money stays off until Phase 4."
@@ -1644,7 +1653,7 @@ function renderWallet(){
 /* ===================== RISK RULES ===================== */
 const rmap={rBank:"bank",rMax:"max",rTp:"tp",rSl:"sl",rDaily:"daily",rFloor:"floor",rMinScore:"minScore"};
 for(const[id,k]of Object.entries(rmap))$("#"+id).value=rules[k];
-$("#rSave").onclick=()=>{for(const[id,k]of Object.entries(rmap))rules[k]=+$("#"+id).value;store.set("rules",rules);buildBotCfg();remoteSync();renderAll(true)};
+$("#rSave").onclick=()=>{for(const[id,k]of Object.entries(rmap))rules[k]=+$("#"+id).value;clampRules();for(const[id,k]of Object.entries(rmap))$("#"+id).value=rules[k];store.set("rules",rules);buildBotCfg();remoteSync();renderAll(true)};
 function riskCheck(){
   const breaks=[],px=SOL_USD||0,maxUsd=rules.bank*rules.max/100;
   const realizedUsd=trades.reduce((a,t)=>a+(t.realized||0),0)*px;
@@ -1665,11 +1674,12 @@ function riskCheck(){
     }else if(t.realized<0&&buys[t.mint]){const lossPct=-t.realized/buys[t.mint]*100;
       if(lossPct>rules.sl)breaks.push([t,"Stop loss",`lost ${lossPct.toFixed(0)}% (limit ${rules.sl}%)`])}
   }
-  return{breaks,bankroll,dayLoss,maxUsd,locked:bankroll<=rules.floor||dayLoss>=rules.daily};
+  return{breaks,bankroll,dayLoss,maxUsd,curfew:inCurfew(),locked:bankroll<=rules.floor||dayLoss>=rules.daily};
 }
 function renderRisk(){
   const r=riskCheck();
-  $("#riskBanner").innerHTML=r.locked?`<div class="banner bad">STOP TRADING. ${r.bankroll<=rules.floor?"Bankroll hit your floor":"Daily loss limit reached"}. Come back tomorrow.</div>`
+  $("#riskBanner").innerHTML=r.locked?`<div class="banner bad">STOP TRADING. ${r.bankroll<=rules.floor?"Bankroll hit the $"+rules.floor+" hard stop. Trading paused until you review with Basha HQ":"Daily loss limit reached"}.</div>`
+    :r.curfew?`<div class="banner warn">No new entries 01:00–07:00 Amman (Phase 4 rule). Exits are still fine.</div>`
     :`<div class="banner ok">Clear to trade. Max size right now: $${fmt(r.maxUsd)} (${SOL_USD?fmt(r.maxUsd/SOL_USD,3):"—"} SOL). Only score ≥ ${rules.minScore}. Take half off at ${rules.tp}x.</div>`;
   $("#riskKpis").innerHTML=[["Bankroll (est.)","$"+fmt(r.bankroll)],["Today's loss","$"+fmt(Math.max(0,r.dayLoss))],["Daily limit left","$"+fmt(Math.max(0,rules.daily-r.dayLoss))],["Rule breaks",r.breaks.length]]
     .map(([k,v])=>`<div class="kpi"><small>${k}</small><b>${v}</b></div>`).join("");

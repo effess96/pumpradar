@@ -24,7 +24,16 @@ function makeTrader({ dataDir, heliusKey, tz, notify }) {
   const SECRET = (process.env.TRADER_KEY || "").trim();
   const FILE = path.join(dataDir, "trader.json");
   let kp = null;
-  if (SECRET) { try { kp = Keypair.fromSecretKey(bs58.decode ? bs58.decode(SECRET) : bs58.default.decode(SECRET)); } catch { console.error("trader: TRADER_KEY is not a valid base58 secret key"); } }
+  let keyError = SECRET ? "" : "TRADER_KEY is empty or missing";
+  if (SECRET) {
+    try {
+      // Accept both formats: base58 string (Phantom) or a JSON number array like [12,34,...] (Solflare / CLI)
+      const raw = SECRET.replace(/^["']|["']$/g, "").trim();
+      const bytes = raw.startsWith("[") ? Uint8Array.from(JSON.parse(raw)) : (bs58.decode ? bs58.decode(raw) : bs58.default.decode(raw));
+      if (bytes.length !== 64) throw new Error(`key has ${bytes.length} bytes, expected 64`);
+      kp = Keypair.fromSecretKey(bytes);
+    } catch (e) { keyError = "TRADER_KEY could not be read (" + e.message.slice(0, 60) + ")"; console.error("trader:", keyError); }
+  }
   const enabled = !!kp && process.env.AUTO_TRADE === "1";
   const conn = new Connection("https://mainnet.helius-rpc.com/?api-key=" + encodeURIComponent(heliusKey || ""), "confirmed");
 
@@ -158,7 +167,7 @@ function makeTrader({ dataDir, heliusKey, tz, notify }) {
     if (txt.startsWith("/sellall")) { for (const p of Object.values(st.positions)) await sell(p, 1, "manual /sellall"); return "Selling everything."; }
     if (txt.startsWith("/trader")) {
       const v = await walletUsd().catch(() => null), pos = Object.values(st.positions);
-      return [`🤖 <b>Auto-trader</b> · ${!kp ? "no TRADER_KEY" : !enabled ? "off (AUTO_TRADE≠1)" : LIVE ? "🔴 LIVE" : "🧪 DRY RUN"}${st.halted ? " · 🛑 HALTED: " + st.haltReason : ""}`,
+      return [`🤖 <b>Auto-trader</b> · ${!kp ? keyError : !enabled ? "off (AUTO_TRADE≠1)" : LIVE ? "🔴 LIVE" : "🧪 DRY RUN"}${st.halted ? " · 🛑 HALTED: " + st.haltReason : ""}`,
         kp ? `Wallet ${kp.publicKey.toBase58().slice(0, 4)}…${kp.publicKey.toBase58().slice(-4)} · ${v != null ? "$" + v.toFixed(2) : "—"}` : "",
         `Today: ${st.buysToday}/${LIMITS.maxBuysPerDay} buys · realized ${(st.realizedToday * (solUsd || 0)).toFixed(2)} USD`,
         pos.length ? "Open: " + pos.map(p => `${p.sym} ${p.lastValSol != null ? (p.lastValSol / p.costSol).toFixed(2) + "×" : ""}`).join(", ") : "No open positions.",

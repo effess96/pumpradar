@@ -17,7 +17,9 @@ const TG_PRACTICE = (process.env.TELEGRAM_PRACTICE || "1") !== "0";
 const TZ = process.env.REPORT_TZ || "Asia/Amman";
 const PAPER_ONLY = (process.env.PAPER_ONLY || "1") !== "0";   // belt and braces: forces PRACTICE on every Telegram alert
 const PUB = path.join(__dirname, "public");
-const { makeTrader } = require("./trader");
+// The auto-trader (and its Solana libraries) load only when explicitly enabled, so a problem there can never stop the paper server from booting.
+let makeTrader = null;
+if (process.env.AUTO_TRADE === "1") { try { ({ makeTrader } = require("./trader")); } catch (e) { console.error("auto-trader failed to load, staying disabled:", e.message); } }
 
 if (TOKEN.length < 12) { console.error("Set DASH_TOKEN to a random string of 12+ characters."); process.exit(1); }
 if (!KEY) console.warn("HELIUS_KEY is not set: bots that require on-chain scans won't trade.");
@@ -162,7 +164,7 @@ async function onSignal(p) {
     text: `${head}\n${act}\nMC $${K(p.mc)} · ${h(p.why)}\nBot: ${h(p.bot)}${plan}`,
     reply_markup: { inline_keyboard: [[{ text: "Open in pump.fun", url: `https://pump.fun/coin/${p.mint}` }]] } });
 }
-trader = makeTrader({ dataDir: DATA, heliusKey: KEY, tz: TZ,
+trader = !makeTrader ? null : makeTrader({ dataDir: DATA, heliusKey: KEY, tz: TZ,
   notify: t => (TG && tgState.chat ? tg("sendMessage", { chat_id: tgState.chat, text: t, parse_mode: "HTML", disable_web_page_preview: true }).catch(() => {}) : null) });
 async function statusText() {
   const s = await ev(() => statusSummary());
@@ -193,7 +195,7 @@ async function tgLoop() {
         else if (txt.startsWith("/status")) await tg("sendMessage", { chat_id: chat, text: await statusText().catch(e => "Engine: " + e.message), parse_mode: "HTML" });
         else {
           const tr = trader ? await trader.command(txt).catch(e => "Trader: " + e.message) : null;
-          await tg("sendMessage", { chat_id: chat, text: tr || "Commands: /status /trader /stop /resume /sellall", parse_mode: "HTML", disable_web_page_preview: true });
+          await tg("sendMessage", { chat_id: chat, text: tr || (trader ? "Commands: /status /trader /stop /resume /sellall" : "Commands: /status"), parse_mode: "HTML", disable_web_page_preview: true });
         }
       }
       saveTg();

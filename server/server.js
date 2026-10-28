@@ -181,6 +181,7 @@ async function statusText() {
   for (const b of s.race) L.push(`${b.ready ? "✅" : "▫️"} ${h(b.name)}: ${b.closed}/50 · ${b.checks}/5 · ${b.ret == null ? "—" : (b.ret > 0 ? "+" : "") + b.ret.toFixed(1) + "%"}${b.on ? "" : " (stopped)"}`);
   L.push(`Learned model: ${s.learn.n}/${s.learn.min} outcomes`);
   if (s.evo) L.push(`Evolution: ${h(s.evo.s)}`);
+  if (s.lab && s.lab.length) L.push("", "<b>Lab</b> (send /lab for the full report)", ...s.lab.map(h));
   return L.join("\n");
 }
 async function tgLoop() {
@@ -198,9 +199,12 @@ async function tgLoop() {
           await tg("sendMessage", { chat_id: chat, text: "✅ PumpRadar linked to this chat. BUY/SELL signals will arrive here. Send /status any time." });
         } else if (chat !== String(tgState.chat)) continue;              // only the owner's chat
         else if (txt.startsWith("/status")) await tg("sendMessage", { chat_id: chat, text: await statusText().catch(e => "Engine: " + e.message), parse_mode: "HTML" });
-        else {
+        else if (txt.startsWith("/lab")) {
+          const lines = await ev(() => labReport(true)).catch(e => ["Engine: " + e.message]);
+          await tg("sendMessage", { chat_id: chat, text: ("<b>Lab report</b>\n<pre>" + h(lines.join("\n").slice(0, 3500)) + "</pre>"), parse_mode: "HTML" });
+        } else {
           const tr = trader ? await trader.command(txt).catch(e => "Trader: " + e.message) : null;
-          await tg("sendMessage", { chat_id: chat, text: tr || (trader ? "Commands: /status /trader /stop /resume /sellall" : "Commands: /status"), parse_mode: "HTML", disable_web_page_preview: true });
+          await tg("sendMessage", { chat_id: chat, text: tr || (trader ? "Commands: /status /lab /trader /stop /resume /sellall" : "Commands: /status /lab"), parse_mode: "HTML", disable_web_page_preview: true });
         }
       }
       saveTg();

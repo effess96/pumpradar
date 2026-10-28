@@ -2359,6 +2359,26 @@ function renderLabExtra(){
     +T0.top.map(x=>`<tr><td class="l">P(2x) ≥ ${x.p.minP}, edge ≥ ${x.p.minEdge}</td><td class="l">${st(x.train)}</td><td class="l ${x.test.mean>0?"pos":"neg"}">${st(x.test)}</td><td class="l">${st(x.ceil)}</td><td class="${x.valid?"pos":"neg"}">${x.valid?"✓ holds":"✗"}</td></tr>`).join("");
 }
 
+/* ---- v6.1: plain-text lab report (Telegram /lab and the 21:00 daily report) ---- */
+function labReport(full){
+  const R=RESEARCH,T0=R&&R.tune,rg=regime(),out=[],st=s=>!s||!s.n?"-":`${s.n} trades ${s.mean>=0?"+":""}${s.mean.toFixed(1)}%/trade, ${s.win.toFixed(0)}% win`;
+  out.push(`Market: ${rg.label}${rg.txt?" ("+rg.txt+")":""}`,`Resolved launches: ${resolvedHist().length}`);
+  out.push("Learner test: "+(T0?(T0.err?T0.err:(T0.top.some(x=>x.valid)?`holds out-of-sample (${T0.nValid} combos)`:`no proven edge; unseen no-filter baseline ${st(T0.base.test)}`)):"not run yet"));
+  const ranked=bots.map(b=>({b,m:qm(b.closed,b.startSol)})).filter(x=>x.m.n>0).sort((a,b)=>b.m.mean-a.m.mean);
+  out.push(ranked[0]?`Best bot: ${ranked[0].b.name}, ${ranked[0].m.n} trades, ${ranked[0].m.mean.toFixed(1)}%/trade, SQN ${f2(ranked[0].m.sqn)}`:"Bots: no closed trades yet");
+  if(!full)return out;
+  if(R&&!R.err&&R.base){out.push("","Entry filters (train / unseen test):",`all launches: ${st(R.base.train)} / ${st(R.base.test)}`);
+    for(const x of R.top.slice(0,4))out.push(`score>=${x.p.minScore} buyers>=${x.p.minBuyers} smart>=${x.p.minSmart}: ${st(x.train)} / ${st(x.test)} ${x.valid?"HOLDS":"no"}`);
+    if(R.diag)out.push(`data: score p10/50/90 ${R.diag.sc.join("/")}, buyers p50/p90 ${R.diag.by.join("/")}, 1h x p50/p90/p99 ${R.diag.x.slice(0,3).map(v=>v==null?"-":v.toFixed(2)).join("/")}, ${R.diag.dead} dead, ${R.diag.smart} with smart wallets`)}
+  else if(R&&R.err)out.push("",R.err);
+  if(T0&&!T0.err){out.push("","Learner thresholds (train / unseen test):",`current P>=0.2 edge>=0.05: ${st(T0.cur.train)} / ${st(T0.cur.test)}`);
+    for(const x of T0.top.slice(0,4))out.push(`P>=${x.p.minP} edge>=${x.p.minEdge}: ${st(x.train)} / ${st(x.test)} ${x.valid?"HOLDS":"no"}`)}
+  out.push("","Bots:");
+  for(const b of bots){const m=qm(b.closed,b.startSol),pz=b.protUntil&&b.protUntil>Date.now();
+    out.push(m.n?`${b.name}: ${m.n} trades, ${m.win.toFixed(0)}% win, ${m.mean>=0?"+":""}${m.mean.toFixed(1)}%/trade, PF ${f2(m.pf)}, SQN ${f2(m.sqn)}, maxDD ${m.dd.toFixed(0)}%${pz?" [paused]":""}`:`${b.name}: no closed trades${pz?" [paused]":""}`)}
+  return out;
+}
+
 /* ===================== v6: settings safety net ===================== */
 function backupSettings(){
   if(ENGINE)return;
@@ -2433,7 +2453,7 @@ function statusSummary(){
     following:ft?{name:ft.b.name,practice:ft.practice}:null,
     pos:ft?Object.values(ft.b.pos).map(p=>{const t=tokens.get(p.mint),px=spotOf(t)??p.mark;return{sym:p.sym,x:px/p.entry,mint:p.mint}}):[],
     race:bots.map(b=>{const rd=readiness(b);return{name:b.name,on:b.on,closed:b.closed.length,ret:retPct(b),checks:rd.checks.filter(c=>c[0]).length,ready:rd.ok,open:Object.keys(b.pos).length}}),
-    learn:{n:L.n||0,min:LEARN_MIN},evo:EVO.log[0]||null};
+    learn:{n:L.n||0,min:LEARN_MIN},evo:EVO.log[0]||null,lab:labReport(false)};
 }
 function exportState(){
   const tk=[...tokens.values()].map(t=>({mint:t.mint,name:t.name,symbol:t.symbol,dev:t.dev,created:t.created,live:t.live,devSold:t.devSold,mcSol:t.mcSol,vSol:t.vSol,

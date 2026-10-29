@@ -1008,6 +1008,10 @@ function autoScan(){
 
 let lastMsg=Date.now();
 const FEED={create:0,buy:0,sell:0,since:Date.now()};   // v6.2: raw feed counters, shown in /lab to diagnose a dead buyer count
+if(ENGINE){   // v6.2: trades come from the server's Helius feed (PumpPortal trade streams are paid)
+  window.__trackedMints=()=>[...tokens.keys()];
+  window.__feedTrades=arr=>{for(const m of arr){if(m.txType==="buy"||m.txType==="sell"){FEED[m.txType]++;FEED.helius=(FEED.helius||0)+1;onTrade(m)}}};
+}
 let wsRetry=0;   // exponential backoff with jitter (gocryptotrader-style) so a flapping feed is not hammered
 function reconnectNow(){const old=ws;ws=null;try{old&&old.close()}catch{}connect()}
 function connect(){
@@ -2371,7 +2375,8 @@ function labReport(full){
   if(R&&!R.err&&R.base){out.push("","Entry filters (train / unseen test):",`all launches: ${st(R.base.train)} / ${st(R.base.test)}`);
     for(const x of R.top.slice(0,4))out.push(`score>=${x.p.minScore} buyers>=${x.p.minBuyers} smart>=${x.p.minSmart}: ${st(x.train)} / ${st(x.test)} ${x.valid?"HOLDS":"no"}`);
     if(R.diag?.ladder)out.push("score ladder (unseen 30%): "+R.diag.ladder.map(l=>`>=${l.m}: ${l.n} launches, ${l.s.n?l.s.mean.toFixed(0)+"%":"-"}`).join(" | "));
-    if(R.diag)out.push(`launches with buyers>0: ${R.diag.byN}/${R.resolved}`);
+    if(R.diag)out.push(`launches with buyers>0: ${R.diag.byN??"n/a (next research run)"}/${R.resolved}`);
+    if(window.__feedStat)out.push(`helius feed: ${window.__feedStat.connected?"connected":"DOWN"}, ${window.__feedStat.msgs} txs, ${window.__feedStat.trades} trade events decoded, ${window.__feedStat.sent} delivered`);
     out.push(`feed since restart (${Math.round((Date.now()-FEED.since)/60000)}m): ${FEED.create} creates, ${FEED.buy} buys, ${FEED.sell} sells, tracked ${tokens.size}`);
     if(R.diag)out.push(`data: score p10/50/90 ${R.diag.sc.join("/")}, buyers p50/p90 ${R.diag.by.join("/")}, 1h x p50/p90/p99 ${R.diag.x.slice(0,3).map(v=>v==null?"-":v.toFixed(2)).join("/")}, ${R.diag.dead} dead, ${R.diag.smart} with smart wallets`)}
   else if(R&&R.err)out.push("",R.err);

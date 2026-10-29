@@ -1010,7 +1010,7 @@ let lastMsg=Date.now();
 const FEED={create:0,buy:0,sell:0,since:Date.now()};   // v6.2: raw feed counters, shown in /lab to diagnose a dead buyer count
 if(ENGINE){   // v6.2: trades come from the server's Helius feed (PumpPortal trade streams are paid)
   window.__trackedMints=()=>[...tokens.keys()];
-  window.__feedTrades=arr=>{for(const m of arr){if(m.txType==="buy"||m.txType==="sell"){FEED[m.txType]++;FEED.helius=(FEED.helius||0)+1;onTrade(m)}}};
+  window.__feedTrades=arr=>{if(arr.length&&!store.get("feedEpoch",0))store.set("feedEpoch",Date.now());for(const m of arr){if(m.txType==="buy"||m.txType==="sell"){FEED[m.txType]++;FEED.helius=(FEED.helius||0)+1;onTrade(m)}}};
 }
 let wsRetry=0;   // exponential backoff with jitter (gocryptotrader-style) so a flapping feed is not hammered
 function reconnectNow(){const old=ws;ws=null;try{old&&old.close()}catch{}connect()}
@@ -2128,7 +2128,7 @@ function statOf(a,key){
 }
 function runResearch(){
   if(REMOTE)return;
-  const res=hist.filter(h=>h.mc1!=null&&h.mc0&&h.t0).sort((a,b)=>a.t0-b.t0);
+  const ep=store.get("feedEpoch",0),res=hist.filter(h=>h.mc1!=null&&h.mc0&&h.t0&&h.t0>=ep).sort((a,b)=>a.t0-b.t0);   // v6.2: only launches seen with the live trade feed (older rows have no buyer data)
   if(res.length<150){RESEARCH={ts:Date.now(),resolved:res.length,err:`need 150 resolved launches, have ${res.length}`};store.set("research",RESEARCH);return RESEARCH}
   const size=SOL_USD?PHASE4.bank*PHASE4.max/100/SOL_USD:0.033;
   const rows=res.map(h=>{const X0=h.nd1?0:h.mc1/h.mc0,X=Math.min(X0,XCAP);return{sc:h.sc||0,by:h.by||0,sm:h.sm||0,X0,f:simRet(X,"floor",size),c:simRet(X,"ceil",size)}});   // multiples above XCAP are capped: they are mostly bad DexScreener pairs, and capping only understates the upside
@@ -2162,7 +2162,7 @@ function nbAdd(M,h){
   for(const k of rowFeat(h)){const a=M.all[k]??={n:0,ran:0,die:0};a.n++;if(ran)a.ran++;if(die)a.die++}
 }
 function walkForward(size){
-  const res=hist.filter(h=>h.mc1!=null&&h.mc0&&h.t0).sort((a,b)=>a.t0-b.t0),need=LEARN_MIN+150;
+  const ep=store.get("feedEpoch",0),res=hist.filter(h=>h.mc1!=null&&h.mc0&&h.t0&&h.t0>=ep).sort((a,b)=>a.t0-b.t0),need=LEARN_MIN+150;
   if(res.length<need)return{err:`learner test needs ${need} resolved launches, have ${res.length}`};
   const M={n:0,ran:{y:0},die:{y:0},all:{}},rows=[];let ptr=0;
   for(let i=0;i<res.length;i++){

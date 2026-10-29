@@ -202,6 +202,6 @@ function makeTrader({ dataDir, heliusKey, tz, notify, getMc = null, pin = null }
     };
   }
   if (kp) console.log(`trader: ${enabled ? (LIVE ? "LIVE" : "DRY RUN") : "disabled"} · wallet ${kp.publicKey.toBase58().slice(0, 4)}…`);
-  return { onBuySignal, onSellSignal, command, snapshot, enabled: () => enabled, live: LIVE, LIMITS };
+  return { onBuySignal, onSellSignal, command, snapshot, openCount: () => Object.keys(st.positions).length, enabled: () => enabled, live: LIVE, LIMITS };
 }
 module.exports = { makeTrader, LIMITS };

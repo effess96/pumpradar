@@ -1,6 +1,6 @@
 {
   "name": "pumpradar-server",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "private": true,
   "description": "Runs PumpRadar's bots 24/7, sends Telegram alerts, and (Phase 4, opt-in) auto-trades with hard limits.",
   "main": "server.js",

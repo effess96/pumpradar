@@ -1007,6 +1007,7 @@ function autoScan(){
 }
 
 let lastMsg=Date.now();
+const FEED={create:0,buy:0,sell:0,since:Date.now()};   // v6.2: raw feed counters, shown in /lab to diagnose a dead buyer count
 let wsRetry=0;   // exponential backoff with jitter (gocryptotrader-style) so a flapping feed is not hammered
 function reconnectNow(){const old=ws;ws=null;try{old&&old.close()}catch{}connect()}
 function connect(){
@@ -1017,8 +1018,8 @@ function connect(){
     const keys=[...new Set([...tokens.keys(),...Object.keys(watch),...bots.flatMap(b=>Object.keys(b.pos))])];if(keys.length)subTrades(keys);
     subAcc=new Set();syncFollowSubs()};
   s.onmessage=e=>{lastMsg=Date.now();if(paused)return;let m;try{m=JSON.parse(e.data)}catch{return}
-    if(m.txType==="create")newToken(m);
-    else if(m.txType==="buy"||m.txType==="sell")onTrade(m);
+    if(m.txType==="create"){FEED.create++;newToken(m)}
+    else if(m.txType==="buy"||m.txType==="sell"){FEED[m.txType]++;onTrade(m)}
     else if(m.txType==="migrate"||m.txType==="migration"){const t=tokens.get(m.mint);if(t)t.graduated=true}};
   s.onclose=()=>{if(ws!==s)return;$("#wsDot").classList.remove("on");$("#wsTxt").textContent="reconnecting…";setTimeout(connect,Math.min(30000,1500*2**Math.min(wsRetry++,5))+Math.random()*1000)};
   s.onerror=()=>{try{s.close()}catch{}};
@@ -2141,7 +2142,7 @@ function runResearch(){
     top:out.slice(0,8),nValid:out.filter(x=>x.valid).length,
     diag:{sc:[qtl(rows.map(r=>r.sc),.1),qtl(rows.map(r=>r.sc),.5),qtl(rows.map(r=>r.sc),.9)],by:[qtl(rows.map(r=>r.by),.5),qtl(rows.map(r=>r.by),.9)],
       x:[qtl(rows.map(r=>r.X0),.5),qtl(rows.map(r=>r.X0),.9),qtl(rows.map(r=>r.X0),.99),Math.max(...rows.map(r=>r.X0))],
-      capped:rows.filter(r=>r.X0>XCAP).length,dead:rows.filter(r=>r.X0===0).length,smart:rows.filter(r=>r.sm>0).length}};
+      capped:rows.filter(r=>r.X0>XCAP).length,byN:rows.filter(r=>r.by>0).length,ladder:[50,60,70,80,90].map(m=>{const x=rows.filter(r=>r.sc>=m);return{m,s:statOf(x.slice(Math.floor(x.length*0.7)),"f"),n:x.length}}),dead:rows.filter(r=>r.X0===0).length,smart:rows.filter(r=>r.sm>0).length}};
   try{RESEARCH.tune=walkForward(size)}catch(e){RESEARCH.tune={err:"learner test failed: "+e.message}}
   store.set("research",RESEARCH);dirty.bot=true;return RESEARCH;
 }
@@ -2369,6 +2370,9 @@ function labReport(full){
   if(!full)return out;
   if(R&&!R.err&&R.base){out.push("","Entry filters (train / unseen test):",`all launches: ${st(R.base.train)} / ${st(R.base.test)}`);
     for(const x of R.top.slice(0,4))out.push(`score>=${x.p.minScore} buyers>=${x.p.minBuyers} smart>=${x.p.minSmart}: ${st(x.train)} / ${st(x.test)} ${x.valid?"HOLDS":"no"}`);
+    if(R.diag?.ladder)out.push("score ladder (unseen 30%): "+R.diag.ladder.map(l=>`>=${l.m}: ${l.n} launches, ${l.s.n?l.s.mean.toFixed(0)+"%":"-"}`).join(" | "));
+    if(R.diag)out.push(`launches with buyers>0: ${R.diag.byN}/${R.resolved}`);
+    out.push(`feed since restart (${Math.round((Date.now()-FEED.since)/60000)}m): ${FEED.create} creates, ${FEED.buy} buys, ${FEED.sell} sells, tracked ${tokens.size}`);
     if(R.diag)out.push(`data: score p10/50/90 ${R.diag.sc.join("/")}, buyers p50/p90 ${R.diag.by.join("/")}, 1h x p50/p90/p99 ${R.diag.x.slice(0,3).map(v=>v==null?"-":v.toFixed(2)).join("/")}, ${R.diag.dead} dead, ${R.diag.smart} with smart wallets`)}
   else if(R&&R.err)out.push("",R.err);
   if(T0&&!T0.err){out.push("","Learner thresholds (train / unseen test):",`current P>=0.2 edge>=0.05: ${st(T0.cur.train)} / ${st(T0.cur.test)}`);

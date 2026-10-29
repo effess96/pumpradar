@@ -77,6 +77,8 @@ function startHeliusFeed() {
     setInterval(() => { if (engineOk) page.evaluate(s => { window.__feedStat = s; }, hFeed.stats()).catch(() => {}); }, 20000);
   } catch (e) { console.error("helius feed failed to start:", e.message); }
 }
+// Give the page the trader's real open-position count, so Phase 4 cards don't warn "wallet not loaded".
+setInterval(() => { if (engineOk && trader && trader.enabled()) page.evaluate(n => { window.__traderOpen = n; }, trader.openCount()).catch(() => {}); }, 20000);
 async function startEngineSafe() { try { await startEngine(); } catch (e) { console.error("engine start failed:", e.message); setTimeout(startEngineSafe, 15000); } }
 async function ev(fn, arg) {
   if (!engineOk) throw new Error("engine starting, try again in a minute");

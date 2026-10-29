@@ -1143,6 +1143,7 @@ async function athCheck(rep){
   }catch(e){out.note="GeckoTerminal: "+e.message;return out}
 }
 function openPositionCount(){
+  if(typeof window.__traderOpen==="number")return window.__traderOpen;   // server: the live trader's own count
   if(!Object.keys(positions).length)return null;   // wallet not loaded
   return Object.values(positions).filter(p=>{const h=p.lots.reduce((a,l)=>a+l.amt,0);
     if(h<=1e-9)return false;

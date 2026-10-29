@@ -64,7 +64,18 @@ async function startEngine() {
     page.on("crash", () => { console.error("page crashed, restarting"); engineOk = false; setTimeout(startEngineSafe, 3000); });
     await page.goto(`http://127.0.0.1:${PORT}/?engine=1`, { waitUntil: "load", timeout: 60000 });
     engineOk = true; console.log("engine running");
+    startHeliusFeed();
   } finally { starting = false; }
+}
+let hFeed = null;   // Helius trade feed (PumpPortal trade streams are paid now); read-only, uses HELIUS_KEY only
+function startHeliusFeed() {
+  if (hFeed || !KEY || process.env.HELIUS_FEED === "0") return;
+  try {
+    hFeed = require("./helius-feed").start({ key: KEY,
+      getTracked: () => engineOk ? page.evaluate(() => window.__trackedMints ? window.__trackedMints() : []) : [],
+      push: arr => engineOk ? page.evaluate(a => window.__feedTrades && window.__feedTrades(a), arr) : null });
+    setInterval(() => { if (engineOk) page.evaluate(s => { window.__feedStat = s; }, hFeed.stats()).catch(() => {}); }, 20000);
+  } catch (e) { console.error("helius feed failed to start:", e.message); }
 }
 async function startEngineSafe() { try { await startEngine(); } catch (e) { console.error("engine start failed:", e.message); setTimeout(startEngineSafe, 15000); } }
 async function ev(fn, arg) {

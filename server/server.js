@@ -181,6 +181,8 @@ async function onSignal(p) {
     reply_markup: { inline_keyboard: [[{ text: "Open in pump.fun", url: `https://pump.fun/coin/${p.mint}` }]] } });
 }
 trader = !makeTrader ? null : makeTrader({ dataDir: DATA, heliusKey: KEY, tz: TZ,
+  getMc: async m => engineOk ? page.evaluate(x => { const t = tokens.get(x); return t && t.mcSol ? t.mcSol : null; }, m) : null,
+  pin: async a => { if (engineOk) await page.evaluate(x => window.__setPinned && window.__setPinned(x), a); },
   notify: t => (TG && tgState.chat ? tg("sendMessage", { chat_id: tgState.chat, text: t, parse_mode: "HTML", disable_web_page_preview: true }).catch(() => {}) : null) });
 async function statusText() {
   const s = await ev(() => statusSummary());

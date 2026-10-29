@@ -897,7 +897,8 @@ function mkToken(mint,o={}){
     devTokens:o.devTokens||0,devSold:false,vSol:o.vSol||30,mcSol:o.mcSol||0,buyers:new Map(),buys:0,sells:0,snipers:new Set(),
     burst:new Set(),smart:new Set(),slot0:o.slot0??null,socials:null,graduated:false,chain:null,bundle:null,scan:"",lastChain:0,lastTrade:Date.now()};
 }
-function protectedMint(m){return !!(watch[m]||anyPos(m))}
+let PINNED=new Set();   // v6.2: mints the server's live trader holds; kept tracked so their curve price stays fresh
+function protectedMint(m){return !!(watch[m]||anyPos(m)||PINNED.has(m))}
 function newToken(m){
   if(!isAddr(m.mint)||tokens.has(m.mint))return;
   const dev=isAddr(m.traderPublicKey)?m.traderPublicKey:null;
@@ -920,7 +921,7 @@ async function fetchMeta(t){
 function onTrade(m){
   if(!isAddr(m.mint)||dupTrade(m.signature))return;
   let t=tokens.get(m.mint);
-  if(!t&&protectedMint(m.mint)){const w=watch[m.mint]||anyPos(m.mint);t=mkToken(m.mint,{symbol:w.symbol||w.sym,name:w.name});tokens.set(m.mint,t)}
+  if(!t&&protectedMint(m.mint)){const w=watch[m.mint]||anyPos(m.mint)||{};t=mkToken(m.mint,{symbol:w.symbol||w.sym,name:w.name});tokens.set(m.mint,t)}
   const who=m.traderPublicKey;
   if(!t){trackWallet(m,null);smartEvent(m,null);return}   // followed wallet trading a token we don't track
   const amt=m.tokenAmount||0,now=Date.now();t.lastTrade=now;
@@ -1009,7 +1010,8 @@ function autoScan(){
 let lastMsg=Date.now();
 const FEED={create:0,buy:0,sell:0,since:Date.now()};   // v6.2: raw feed counters, shown in /lab to diagnose a dead buyer count
 if(ENGINE){   // v6.2: trades come from the server's Helius feed (PumpPortal trade streams are paid)
-  window.__trackedMints=()=>[...tokens.keys()];
+  window.__trackedMints=()=>[...new Set([...tokens.keys(),...PINNED])];
+  window.__setPinned=a=>{PINNED=new Set((a||[]).filter(isAddr))};
   window.__feedTrades=arr=>{if(arr.length&&!store.get("feedEpoch",0))store.set("feedEpoch",Date.now());for(const m of arr){if(m.txType==="buy"||m.txType==="sell"){FEED[m.txType]++;FEED.helius=(FEED.helius||0)+1;onTrade(m)}}};
 }
 let wsRetry=0;   // exponential backoff with jitter (gocryptotrader-style) so a flapping feed is not hammered

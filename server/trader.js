@@ -19,7 +19,7 @@ const LIMITS = Object.freeze({ maxUsd: 5, maxOpen: 4, tpX: 2, tpFrac: 0.5, slX: 
   hardStopUsd: 10, dailyLossUsd: 10, maxBuysPerDay: 12, curfewFrom: 1, curfewTo: 7,
   slippagePct: 15, priorityFeeSol: 0.0003, minSolReserve: 0.01 });
 
-function makeTrader({ dataDir, heliusKey, tz, notify }) {
+function makeTrader({ dataDir, heliusKey, tz, notify, getMc = null, pin = null }) {   // getMc(mint) -> live bonding-curve market cap (SOL) from the engine; pin(mints) keeps those tokens tracked
   const LIVE = process.env.TRADER_LIVE === "1";
   const SECRET = (process.env.TRADER_KEY || "").trim();
   const FILE = path.join(dataDir, "trader.json");
@@ -111,10 +111,11 @@ function makeTrader({ dataDir, heliusKey, tz, notify }) {
     const sol = +(usd / px).toFixed(4);
     if (sol <= 0 || bal - sol < LIMITS.minSolReserve) return skip(`not enough SOL (${bal.toFixed(4)})`);
     try {
+      const mc0 = getMc ? await getMc(p.mint).catch(() => null) : null;   // entry price reference for curve-priced exits
       const before = LIVE ? await tokenBalance(p.mint).catch(() => 0) : 0;
       const r = await execute("buy", p.mint, sol, true);
       const got = LIVE ? Math.max(0, (await tokenBalance(p.mint)) - before) : 0;
-      st.positions[p.mint] = { mint: p.mint, sym: p.sym, costSol: sol, tokens: got, opened: Date.now(), tpHit: false, lastValSol: sol, dry: !LIVE };
+      st.positions[p.mint] = { mint: p.mint, sym: p.sym, costSol: sol, tokens: got, opened: Date.now(), tpHit: false, lastValSol: sol, mc0: mc0 > 0 ? mc0 : null, dry: !LIVE };
       st.buysToday++; save();
       log(`BUY ${p.sym} ${sol} SOL ($${usd.toFixed(2)}) ${r.sig}`);
       notify(`${tag}🤖 <b>BOUGHT ${p.sym}</b> · ${sol} SOL ($${usd.toFixed(2)})\nStop −35% · sell 50% at 2× · max hold ${LIMITS.maxHoldMin} min\n${LIVE ? `<a href="https://solscan.io/tx/${r.sig}">tx</a>` : "No real order (TRADER_LIVE is off)."}\nLog it in Notion → Real Money Desk.`);
@@ -146,10 +147,15 @@ function makeTrader({ dataDir, heliusKey, tz, notify }) {
   async function monitor() {
     if (!enabled || busy) return; busy = true;
     try {
+      if (pin) await Promise.resolve(pin(Object.keys(st.positions))).catch(() => {});
       for (const pos of Object.values(st.positions)) {
         const ageMin = (Date.now() - pos.opened) / 60000;
         if (!pos.dry) { pos.tokens = await tokenBalance(pos.mint).catch(() => pos.tokens); if (pos.tokens <= 0) { delete st.positions[pos.mint]; save(); continue; } }
-        const val = pos.dry ? null : await quoteSol(pos.mint, pos.tokens);
+        let val = pos.dry ? null : await quoteSol(pos.mint, pos.tokens);
+        if (val == null && getMc) {   // no Jupiter route (fresh bonding-curve token): price from the live curve instead, so stop-loss / take-profit still work
+          const mc = await getMc(pos.mint).catch(() => null);
+          if (mc > 0) { if (!(pos.mc0 > 0)) { pos.mc0 = mc; val = pos.costSol; } else val = pos.costSol * mc / pos.mc0; }
+        }
         if (val != null) pos.lastValSol = val;
         const x = val != null ? val / pos.costSol : null;
         if (x != null && x <= LIMITS.slX) await sell(pos, 1, `stop −35% (${x.toFixed(2)}×)`);
